@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Lance Claude Code dans le conteneur, avec le dossier courant comme projet.
+# Usage : claude-docker [--rebuild] [arguments passés à claude...]
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+IMAGE="${CLAUDE_DOCKER_IMAGE:-claude-code}"
+CONFIG_VOLUME="${CLAUDE_DOCKER_CONFIG_VOLUME:-claude-config}"
+PROJECT_DIR="$(pwd)"
+
+if [[ "${1:-}" == "--rebuild" ]]; then
+    shift
+    REBUILD=1
+fi
+
+# Construit l'image si absente (ou si --rebuild), avec l'UID/GID de l'hôte
+# pour que les fichiers créés dans le projet t'appartiennent.
+if [[ -n "${REBUILD:-}" ]] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    docker build \
+        --build-arg UID="$(id -u)" \
+        --build-arg GID="$(id -g)" \
+        -t "$IMAGE" \
+        -f "$REPO_DIR/dockerfile" \
+        "$REPO_DIR"
+fi
+
+args=(
+    --rm
+    --name "claude-$(basename "$PROJECT_DIR" | tr -c 'a-zA-Z0-9_.-' '-')-$$"
+    -v "$CONFIG_VOLUME:/home/dev/.claude"
+    # Même chemin que sur l'hôte : l'historique Claude reste distinct par projet
+    -v "$PROJECT_DIR:$PROJECT_DIR"
+    -w "$PROJECT_DIR"
+)
+
+# Mode interactif seulement si on est dans un terminal
+if [[ -t 0 && -t 1 ]]; then
+    args+=(-it)
+fi
+
+if [[ -f "$REPO_DIR/.env" ]]; then
+    args+=(--env-file "$REPO_DIR/.env")
+fi
+
+exec docker run "${args[@]}" "$IMAGE" claude "$@"
