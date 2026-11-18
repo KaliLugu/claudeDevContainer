@@ -1,33 +1,44 @@
 # Règles globales (conteneur claude-docker)
 
-## Mémoire de repo pour agents spécialisés
+## Agents spécialisés par repo
 
-Ces règles ne s'appliquent **que** si le dossier de lancement contient un
-dossier `.claude/agents/` (opt-in par projet), ou si l'utilisateur le demande
-explicitement. Sinon, ne crée aucun de ces fichiers.
+`~/.claude/agents/` est monté depuis le repo claudeDevContainer (dossier
+`agents/`) : tout ce que tu y écris est conservé et versionné là-bas, et
+chaque fichier est disponible comme subagent dans **tous** les projets.
 
-### Où écrire
+### Quand écrire
 
-- Un fichier par repo : `.claude/agents/<nom-du-repo>.md`, placé dans le
-  `.claude/agents/` du **dossier de lancement**.
-  - Projet mono-repo : le dossier de lancement est le repo lui-même.
-  - Projet multirepo : le dossier de lancement est le dossier parent qui
-    contient les repos ; tous les agents y sont regroupés, un par sous-repo.
-- En multirepo, tiens aussi à jour un `CLAUDE.md` à la racine du dossier de
-  lancement : liste des repos (chemin, rôle en une ligne, agent associé) et
-  liens entre eux (qui appelle qui, contrats partagés, ordre de déploiement).
+- **Création** : uniquement si l'utilisateur le demande (« crée / sauvegarde
+  l'agent de ce repo »). Ne crée jamais d'agent de ta propre initiative.
+- **Mise à jour** : si un agent existe déjà pour le repo courant, mets-le à
+  jour quand tu découvres quelque chose de non évident et durable (commande
+  qui ne marche que d'une certaine façon, couplage entre repos, convention
+  implicite, piège qui t'a coûté du temps).
+- Signale à l'utilisateur, en une ligne, chaque fichier créé ou modifié.
 
-### Format d'un fichier d'agent
+### Où et comment nommer
 
-Ce sont des subagents Claude Code, donc ce format exact :
+- Un fichier par repo : `~/.claude/agents/<nom-du-repo>.md`, `name` identique.
+  Le nom du repo vient du remote git (`git remote get-url origin`), sinon du
+  nom du dossier. En cas de collision avec un agent d'un autre repo, préfixe
+  par l'organisation : `<org>-<repo>`.
+- **Multirepo** (lancé depuis un dossier parent contenant plusieurs repos) :
+  un agent par sous-repo, plus un agent coordinateur
+  `~/.claude/agents/<nom-du-dossier-parent>.md` qui liste les repos (chemin,
+  rôle en une ligne, agent associé) et leurs liens (qui appelle qui, contrats
+  partagés, ordre de déploiement).
+- Ne mets dans ce dossier que des fichiers d'agent : tout `.md` y est chargé
+  comme subagent.
+
+### Format
 
 ```markdown
 ---
 name: <nom-du-repo>
-description: Expert du repo <nom-du-repo> (<chemin relatif>). À utiliser pour <cas d'usage concrets>.
+description: Expert du repo <nom-du-repo> (<remote git>). À utiliser pour <cas d'usage concrets>.
 ---
 
-Tu es spécialiste du repo `<chemin relatif>`. Travaille dans ce dossier.
+Tu es spécialiste du repo `<nom-du-repo>` (<remote git>).
 
 ## Rôle
 ## Stack et commandes (build, test, lint, lancement)
@@ -37,20 +48,18 @@ Tu es spécialiste du repo `<chemin relatif>`. Travaille dans ce dossier.
 ## Pièges connus
 ```
 
-### Quand l'écrire ou le mettre à jour
+N'écris pas de chemins absolus de la machine : le repo peut être ouvert
+ailleurs. Décris les chemins relativement à la racine du repo.
 
-- Au premier travail significatif sur un repo qui n'a pas encore d'agent.
-- Quand tu découvres quelque chose de non évident et durable : une commande
-  qui ne marche que d'une certaine façon, un couplage entre repos, une
-  convention implicite, un piège qui t'a coûté du temps.
-- N'y mets pas ce qui se lit directement dans le code ou l'historique git,
-  ni de détails propres à la tâche en cours, ni de secrets.
+### Contenu
+
+- Pas ce qui se lit directement dans le code ou l'historique git, pas de
+  détails propres à la tâche en cours, jamais de secrets.
 - Modifie la section concernée plutôt que d'empiler ; supprime ce qui est
   devenu faux. Garde chaque fichier court (idéalement < 150 lignes).
-- Signale à l'utilisateur, en une ligne, chaque fichier d'agent créé ou modifié.
 
 ### Utilisation
 
 Pour une tâche qui touche un repo précis, délègue à son agent quand c'est
-utile ; pour une tâche transverse, appuie-toi sur le `CLAUDE.md` racine et
-coordonne les agents des repos concernés.
+utile ; pour une tâche transverse en multirepo, appuie-toi sur l'agent
+coordinateur.

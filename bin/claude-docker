@@ -30,6 +30,8 @@ args=(
     -v "$CONFIG_VOLUME:/home/dev/.claude"
     # Règles globales versionnées dans ce repo (lecture seule)
     -v "$REPO_DIR/config/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro"
+    # Agents spécialisés : écrits par Claude, versionnés dans ce repo
+    -v "$REPO_DIR/agents:/home/dev/.claude/agents"
     # Même chemin que sur l'hôte : l'historique Claude reste distinct par projet
     -v "$PROJECT_DIR:$PROJECT_DIR"
     -w "$PROJECT_DIR"
