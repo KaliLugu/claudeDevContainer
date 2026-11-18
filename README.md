@@ -36,6 +36,31 @@ claude-docker --rebuild      # reconstruit l'image avant de lancer
 
 Sans fish : `~/claude-docker/bin/claude-docker`.
 
+### Windows (PowerShell + Docker Desktop)
+
+Prérequis : Docker Desktop lancé, en mode *Linux containers*.
+
+```powershell
+git clone <ce-repo> $HOME\claude-docker
+cd $HOME\claude-docker
+Copy-Item .env.template .env          # puis renseigner CLAUDE_CODE_OAUTH_TOKEN
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # une seule fois
+
+cd C:\chemin\vers\mon-projet
+& $HOME\claude-docker\bin\claude-docker.ps1            # mêmes options : --rebuild, --continue…
+```
+
+Pour avoir la commande `claude-docker` partout, ajoute à ton profil
+(`notepad $PROFILE`) :
+
+```powershell
+function claude-docker { & "$HOME\claude-docker\bin\claude-docker.ps1" @args }
+```
+
+Le projet `C:\Users\moi\projet` est monté dans le conteneur en
+`/c/Users/moi/projet`. Les montages depuis NTFS sont plus lents que sous
+Linux ; pour de gros projets, préfère WSL2 avec le script bash.
+
 ### Ce que fait le lancement
 
 | Élément | Détail |
@@ -44,6 +69,7 @@ Sans fish : `~/claude-docker/bin/claude-docker`.
 | Projet | le dossier courant, monté **au même chemin** que sur l'hôte (historique Claude séparé par projet) |
 | Config Claude | volume Docker `claude-config` → `/home/dev/.claude` (session, réglages, historique persistants) |
 | Règles globales | `config/CLAUDE.md` monté en lecture seule comme `~/.claude/CLAUDE.md` |
+| Agents | `agents/` du repo monté comme `~/.claude/agents/` (lecture-écriture) |
 | Secrets | `.env` du repo passé via `--env-file` |
 
 Seul le dossier courant est visible dans le conteneur : Claude ne peut pas
@@ -53,25 +79,29 @@ Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`.
 
 ## Agents spécialisés par repo
 
-`config/CLAUDE.md` contient des règles qui font écrire à Claude, au fil du
-travail, un fichier `.md` par repo décrivant ce qu'il faut savoir pour y
-travailler : commandes, architecture, conventions, interfaces avec les autres
-repos, pièges. Ces fichiers sont au format
-[subagent Claude Code](https://docs.claude.com/en/docs/claude-code/sub-agents),
-donc directement utilisables comme agents spécialisés.
+Depuis n'importe quel projet lancé avec `claude-docker`, tu peux demander à
+Claude d'écrire un agent spécialisé pour ce repo. Il est enregistré dans le
+dossier `agents/` **de ce repo-ci** (monté comme `~/.claude/agents/` dans le
+conteneur) : il est donc versionné ici et disponible comme
+[subagent Claude Code](https://docs.claude.com/en/docs/claude-code/sub-agents)
+dans tous tes projets.
 
-**C'est opt-in par projet** : les règles ne s'appliquent que si le dossier de
-lancement contient `.claude/agents/`.
+Les règles sont dans `config/CLAUDE.md`.
 
 ### Mono-repo
 
 ```fish
 cd ~/projets/mon-repo
-mkdir -p .claude/agents
 claude-docker
 ```
+> Crée l'agent de ce repo.
 
-→ `mon-repo/.claude/agents/mon-repo.md`
+→ `claudeDevContainer/agents/mon-repo.md`
+
+Ensuite, Claude le tient à jour tout seul quand il découvre quelque chose de
+durable (commandes, conventions, pièges, liens avec d'autres repos). Pour
+forcer une mise à jour :
+> Mets à jour l'agent de ce repo avec ce qu'on vient d'apprendre.
 
 ### Multirepo
 
@@ -79,41 +109,39 @@ Lance depuis le dossier parent qui regroupe les repos, pour que Claude les
 voie tous :
 
 ```
-~/projets/ma-plateforme/          ← lancer claude-docker ici
-├── CLAUDE.md                     ← carte des repos et de leurs liens
-├── .claude/agents/
-│   ├── api.md
-│   ├── front.md
-│   └── infra.md
-├── api/                          (repo git)
-├── front/                        (repo git)
-└── infra/                        (repo git)
+~/projets/ma-plateforme/      ← lancer claude-docker ici
+├── api/                      (repo git)
+├── front/                    (repo git)
+└── infra/                    (repo git)
 ```
+> Crée les agents de ces repos.
 
-```fish
-cd ~/projets/ma-plateforme
-mkdir -p .claude/agents
-claude-docker
+→ dans `claudeDevContainer/agents/` : `api.md`, `front.md`, `infra.md`, plus
+`ma-plateforme.md`, un agent coordinateur qui décrit les liens entre les repos.
+
+### Versionner
+
+Les fichiers apparaissent dans `agents/` de ce repo ; commite-les comme le
+reste :
+
+```bash
+cd ~/claude-docker
+git add agents && git commit -m "Agents : api, front, infra"
 ```
-
-Le dossier parent n'est en général pas lui-même un repo. Pour versionner et
-partager ces fichiers, tu peux en faire un petit repo « méta »
-(`git init` dans `ma-plateforme/` en ignorant les sous-repos) ou les copier
-dans un repo de doc.
-
-Pour demander une mise à jour explicite :
-> Mets à jour l'agent du repo api avec ce qu'on vient d'apprendre.
 
 Pour modifier les règles, édite `config/CLAUDE.md` ; c'est pris en compte au
 lancement suivant, sans reconstruire l'image.
 
+
 ## Structure
 
 ```
-bin/claude-docker         script de lancement
+bin/claude-docker         script de lancement (bash)
+bin/claude-docker.ps1     script de lancement (PowerShell, Windows)
 fish/claude-docker.fish   fonction fish
 install-fish.sh           installation de la fonction fish
 config/CLAUDE.md          règles globales montées dans le conteneur
+agents/                   agents spécialisés par repo, écrits par Claude
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
 ```
