@@ -383,6 +383,10 @@ La CI GitHub Actions les lance à chaque push, avec `shellcheck` et une
 vérification de syntaxe du script PowerShell. Le script PowerShell n'est pas
 exécuté par la CI.
 
+## Changements
+
+Voir [CHANGELOG.md](CHANGELOG.md), à lire après un `git pull`.
+
 ## Licence
 
 [MIT](LICENSE).
