@@ -35,7 +35,7 @@ Ouvre un nouveau shell.
 cd ~/projets/mon-projet
 claude-docker                # ou : clauded
 claude-docker --continue     # les arguments sont passés à claude
-claude-docker --rebuild      # reconstruit l'image sans cache : met à jour Claude Code
+claude-docker --rebuild      # reconstruit l'image sans cache (paquets Debian à jour)
                              # (l'image est aussi reconstruite seule quand le dockerfile change)
 claude-docker --no-sudo      # session sans sudo ni privilèges (voir Outils)
 claude-docker --clean        # supprime les images de paquets de projet (voir Outils)
@@ -115,6 +115,24 @@ Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`,
 Au lancement, le script signale sur le terminal les réglages de `.env` qu'il
 ne comprend pas (entrée mal formée, guillemets, nom de repo inconnu, token
 vide), puis continue.
+
+## Versions
+
+Les versions de Claude Code et de `mise` sont fixées en tête du `dockerfile`
+(`CLAUDE_VERSION`, `MISE_VERSION`) : deux builds donnent la même image, et
+le binaire `mise` est vérifié par son empreinte SHA-256. Claude Code ne se
+met pas à jour seul dans le conteneur.
+
+Pour mettre à jour, change la version dans le `dockerfile` (et les deux
+empreintes pour `mise`) : l'image est reconstruite au lancement suivant.
+Pour essayer une autre version de Claude Code sans toucher au fichier :
+
+```bash
+CLAUDE_DOCKER_CLAUDE_VERSION=latest claude-docker --rebuild
+```
+
+L'image de base `debian:bookworm-slim` n'est pas figée, pour continuer à
+recevoir les correctifs de sécurité à chaque `--rebuild`.
 
 ## Outils
 

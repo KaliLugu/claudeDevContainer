@@ -53,6 +53,9 @@ CAPS="--cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --c
 ok "sudo fonctionne avec les capacités du mode par défaut" out_has root in_image $CAPS "$IMG" sudo id -un
 no "sudo refusé avec --no-sudo" in_image --cap-drop ALL --security-opt no-new-privileges "$IMG" sudo true
 ok "mise et jq présents" in_image "$IMG" sh -c 'mise --version && jq --version'
+pinned() { sed -n "s/^ARG $1=v\{0,1\}//p" "$ROOT/dockerfile"; }
+ok "Claude Code à la version fixée" out_has "$(pinned CLAUDE_VERSION) " in_image "$IMG" claude --version
+ok "mise à la version fixée" out_has "$(pinned MISE_VERSION) " in_image "$IMG" mise --version
 
 MANAGED="-v $ROOT/config/managed:/etc/claude-code:ro"
 # shellcheck disable=SC2086

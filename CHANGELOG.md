@@ -18,7 +18,9 @@ peuvent surprendre après un `git pull`, sont en tête de chaque entrée.
   `claude-docker --no-sudo` lance une session sans `sudo` ni privilèges.
 - **Clé SSH** : `ssh/` est monté en lecture seule. Si ton `ssh/config` date
   d'avant, supprime-le et relance `setup-ssh-key.sh` (la clé est conservée).
-- **Mise à jour de Claude Code** : elle ne se fait plus dans le conteneur.
+- **Mise à jour de Claude Code** : elle ne se fait plus dans le conteneur, ni
+  par `--rebuild`. Les versions de Claude Code et de `mise` sont fixées en
+  tête du `dockerfile` ; change-les là pour mettre à jour.
 - **Reconstruction** : l'image est reconstruite d'elle-même au premier
   lancement après un changement du `dockerfile`.
 - **Repos d'agents** : la synchronisation est faite par un script avant le

@@ -37,12 +37,15 @@ fi
 
 # Construit l'image si absente, si le dockerfile a changé ou si --rebuild,
 # avec l'UID/GID de l'hôte pour que les fichiers créés t'appartiennent.
-DOCKERFILE_SUM="$(cksum < "$REPO_DIR/dockerfile" | cut -d' ' -f1)"
+# CLAUDE_DOCKER_CLAUDE_VERSION remplace la version fixée dans le dockerfile
+CLAUDE_VERSION="${CLAUDE_DOCKER_CLAUDE_VERSION:-}"
+DOCKERFILE_SUM="$( (cat "$REPO_DIR/dockerfile"; echo "$CLAUDE_VERSION") | cksum | cut -d' ' -f1)"
 built_sum="$(docker image inspect -f '{{index .Config.Labels "claude-docker.dockerfile"}}' "$IMAGE" 2>/dev/null || true)"
 if [[ -n "${REBUILD:-}" || "$built_sum" != "$DOCKERFILE_SUM" ]]; then
     docker build \
         ${REBUILD:+--no-cache --pull} \
         --label "claude-docker.dockerfile=$DOCKERFILE_SUM" \
+        ${CLAUDE_VERSION:+--build-arg "CLAUDE_VERSION=$CLAUDE_VERSION"} \
         --build-arg UID="$(id -u)" \
         --build-arg GID="$(id -g)" \
         -t "$IMAGE" \
