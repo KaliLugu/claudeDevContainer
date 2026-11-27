@@ -361,3 +361,7 @@ tests/docker.test.sh         # build de l'image et lancement (Docker)
 La CI GitHub Actions les lance à chaque push, avec `shellcheck` et une
 vérification de syntaxe du script PowerShell. Le script PowerShell n'est pas
 exécuté par la CI.
+
+## Licence
+
+[MIT](LICENSE).
