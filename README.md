@@ -40,6 +40,35 @@ claude-docker --rebuild      # reconstruit l'image avant de lancer
 
 Sans fonction shell : `~/claude-docker/bin/claude-docker`.
 
+### Windows (PowerShell + Docker Desktop)
+
+Prérequis : Docker Desktop lancé, en mode *Linux containers*.
+
+```powershell
+git clone <ce-repo> $HOME\claude-docker
+cd $HOME\claude-docker
+Copy-Item .env.template .env          # puis renseigner CLAUDE_CODE_OAUTH_TOKEN
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # une seule fois
+
+cd C:\chemin\vers\mon-projet
+& $HOME\claude-docker\bin\claude-docker.ps1            # mêmes options : --rebuild, --continue…
+```
+
+Pour avoir la commande `claude-docker` partout, ajoute à ton profil
+(`notepad $PROFILE`) :
+
+```powershell
+function claude-docker { & "$HOME\claude-docker\bin\claude-docker.ps1" @args }
+```
+
+Le projet `C:\Users\moi\projet` est monté dans le conteneur en
+`/c/Users/moi/projet`. Les montages depuis NTFS sont plus lents que sous
+Linux ; pour de gros projets, préfère WSL2 avec le script bash.
+
+Sous Windows natif, la clé SSH dédiée et les repos d'agents donnés par un
+chemin local ne sont pas pris en charge (les repos d'agents par URL git
+fonctionnent) : pour tout avoir, utilise WSL2 avec le script bash.
+
 ### Ce que fait le lancement
 
 | Élément | Détail |
@@ -48,6 +77,8 @@ Sans fonction shell : `~/claude-docker/bin/claude-docker`.
 | Projet | le dossier courant, monté **au même chemin** que sur l'hôte (historique Claude séparé par projet) |
 | Config Claude | volume Docker `claude-config` → `/home/dev/.claude` (session, réglages, historique persistants) |
 | Règles globales | `config/CLAUDE.md` monté en lecture seule comme `~/.claude/CLAUDE.md` |
+| Clé SSH | `ssh/` monté comme `~/.ssh` s'il contient une clé (`setup-ssh-key.sh`) |
+| Repos d'agents | ceux de `CLAUDE_AGENTS_REPOS` donnés par un chemin local, montés au même chemin |
 | Secrets | `.env` du repo passé via `--env-file` |
 
 Seul le dossier courant est visible dans le conteneur : Claude ne peut pas
@@ -231,7 +262,8 @@ lancement suivant, sans reconstruire l'image.
 ## Structure
 
 ```
-bin/claude-docker         script de lancement
+bin/claude-docker         script de lancement (bash)
+bin/claude-docker.ps1     script de lancement (PowerShell, Windows)
 fish/claude-docker.fish   fonction fish
 install-fish.sh           installation de la fonction fish
 bash/claude-docker.bash   fonction bash

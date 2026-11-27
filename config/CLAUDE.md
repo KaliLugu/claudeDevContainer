@@ -18,6 +18,10 @@ Un **projet** est ce sur quoi on lance claude-docker : un repo seul
 (mono-repo) ou un dossier parent regroupant plusieurs repos (multirepo). Son
 nom est le nom du dossier de lancement, sauf indication de l'utilisateur.
 
+Le **nom d'un repo** vient de son remote (`git remote get-url origin`, sans
+`.git`), sinon du nom de son dossier : il reste le même quel que soit
+l'endroit où le repo est cloné.
+
 | Fichier | Mode local | Mode repos d'agents |
 |---|---|---|
 | Agent d'un repo | `<lancement>/.claude/agents/<repo>.md` | `<hub>/<projet>/agents/<repo>.md` |
@@ -36,10 +40,11 @@ Ce sont des subagents Claude Code, donc ce format exact :
 ```markdown
 ---
 name: <nom-du-repo>
-description: Expert du repo <nom-du-repo> (<chemin relatif au dossier de lancement>). À utiliser pour <cas d'usage concrets>.
+description: Expert du repo <nom-du-repo> (<remote git>). À utiliser pour <cas d'usage concrets>.
 ---
 
-Tu es spécialiste du repo `<chemin relatif>`. Travaille dans ce dossier.
+Tu es spécialiste du repo `<nom-du-repo>` (<remote git>). Travaille dans son
+dossier.
 
 ## Rôle
 ## Stack et commandes (build, test, lint, lancement)
@@ -49,13 +54,19 @@ Tu es spécialiste du repo `<chemin relatif>`. Travaille dans ce dossier.
 ## Pièges connus
 ```
 
+N'écris pas de chemins absolus de la machine : le repo peut être cloné
+ailleurs. Décris les chemins relativement à la racine du repo.
+
 Le `name` doit être unique parmi les agents liés : en cas de collision
 (deux projets ou deux repos d'agents), préfixe-le par le projet
-(`<projet>-<repo>`), ainsi que le nom du fichier.
+(`<projet>-<repo>`), ainsi que le nom du fichier. `~/.claude/agents/` ne doit
+contenir que des agents : tout `.md` qui s'y trouve est chargé comme subagent.
 
 ### Quand l'écrire ou le mettre à jour
 
-- Au premier travail significatif sur un repo qui n'a pas encore d'agent.
+- **Automatiquement**, au premier travail significatif sur un repo qui n'a
+  pas encore d'agent (et dont aucun repo d'agents n'en contient un), ou
+  quand l'utilisateur le demande.
 - Quand tu découvres quelque chose de non évident et durable : une commande
   qui ne marche que d'une certaine façon, un couplage entre repos, une
   convention implicite, un piège qui t'a coûté du temps.
