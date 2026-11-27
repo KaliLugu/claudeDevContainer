@@ -129,4 +129,4 @@ if [[ -f "$REPO_DIR/.env" ]]; then
     fi
 fi
 
-exec docker run "${args[@]}" "$RUN_IMAGE" claude "$@"
+exec docker run "${args[@]}" "$RUN_IMAGE" bash /etc/claude-code/start.sh "$@"

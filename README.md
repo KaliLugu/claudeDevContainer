@@ -298,17 +298,20 @@ Mise en place :
      vérifications de mises à jour.
 4. Relance claude-docker.
 
-Au début de chaque session, Claude :
+À chaque lancement, avant le démarrage de Claude, un script
+(`config/managed/agents-sync.sh`) :
 
-- **vérifie les mises à jour** de chaque repo d'agents si la dernière
-  vérification date de plus de `CLAUDE_AGENTS_CHECK_HOURS` heures (date
-  retenue dans `~/.claude/agents-repos/state.tsv`), les récupère et te
-  résume ce qui concerne le projet lancé ;
-- **cherche les agents manquants** : pour chaque repo git du projet lancé
-  qui n'a pas encore d'agent, il regarde si un repo d'agents en contient un
-  et le récupère.
+- **clone** les repos donnés par URL qui ne le sont pas encore ;
+- **récupère les mises à jour** de chaque repo d'agents si la dernière
+  vérification date de plus de `CLAUDE_AGENTS_CHECK_HOURS` heures. Une copie
+  de travail locale qui a des modifications en cours n'est jamais touchée ;
+- **lie les agents manquants** : pour chaque repo git du projet lancé qui
+  n'a pas encore d'agent, il cherche dans les repos d'agents et le lie ;
+- **transmet à Claude** ce qu'il a fait et le `CLAUDE.md` du projet, par un
+  hook de début de session.
 
-Il ne dit rien s'il n'y a rien de nouveau.
+Claude te résume en une ou deux lignes ce qui est nouveau, et ne dit rien
+sinon. Ce travail ne consomme plus de tokens et ne dépend plus du modèle.
 
 Fonctionnement :
 
@@ -318,7 +321,8 @@ Fonctionnement :
   premier de cette liste. Un projet d'un repo en lecture seule n'est pas
   modifié : Claude propose de le copier dans un repo inscriptible.
 - Les agents récupérés sont liés dans `~/.claude/agents/` et deviennent
-  disponibles dans tous les projets **au lancement suivant**.
+  disponibles dans tous les projets. Ceux que le script lie au lancement
+  le sont dès cette session.
 
 Exemples de demandes :
 > Récupère les agents de ma-plateforme.
@@ -339,7 +343,8 @@ bash/claude-docker.bash   fonction bash
 install-bash.sh           installation de la fonction bash
 setup-ssh-key.sh          création de la clé SSH dédiée à Claude
 config/CLAUDE.md          règles globales montées dans le conteneur
-config/managed/           réglages imposés et hooks, montés dans /etc/claude-code
+config/managed/           réglages imposés, hooks et scripts de démarrage
+                          (start.sh, agents-sync.sh), montés dans /etc/claude-code
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
 ```

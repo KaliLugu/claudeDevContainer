@@ -110,59 +110,25 @@ done
 pousser librement. Les autres sont en **lecture seule**. Si elle est absente,
 aucun repo n'est inscriptible : propose alors à l'utilisateur de la définir.
 
-### Au début de chaque session
+### Au lancement
 
-Avant de traiter la première demande, fais ces vérifications, rapidement et
-sans bruit : ne dis rien s'il n'y a rien de nouveau.
+Un script (`agents-sync.sh`) s'exécute avant ton démarrage : il clone les
+repos donnés par URL, récupère leurs mises à jour, lie dans
+`~/.claude/agents/` les agents trouvés pour les repos du projet lancé, et te
+transmet en début de session ce qu'il a fait ainsi que le `CLAUDE.md` du
+projet s'il existe dans un repo d'agents.
 
-**1. Mises à jour (si la dernière vérification est trop ancienne).**
-La date de la dernière vérification de chaque repo est dans
-`~/.claude/agents-repos/state.tsv` (une ligne `<nom>\t<date ISO 8601 UTC>`).
-Si elle est absente ou plus vieille que `CLAUDE_AGENTS_CHECK_HOURS` heures
-(défaut 24) :
-
-```bash
-git -C "$hub" fetch --quiet
-git -C "$hub" log --oneline HEAD..@{u}            # ce qui est nouveau
-git -C "$hub" log --oneline HEAD..@{u} -- <projet> # ce qui concerne le projet lancé
-```
-
-- Clone (`~/.claude/agents-repos/…`) : `git -C "$hub" pull --rebase --quiet`.
-- Chemin local : `git -C "$hub" pull --ff-only --quiet` seulement si la copie
-  est propre (`git status --porcelain` vide) ; sinon ne touche à rien et
-  signale qu'elle est en retard.
-- Enregistre la date du jour pour ce repo dans `state.tsv` (remplace la
-  ligne existante), même s'il n'y avait rien de nouveau.
-- Si des commits concernent le projet lancé, résume-les en une ou deux
-  lignes (agents ajoutés ou modifiés, contexte mis à jour), relis son
-  `CLAUDE.md` et lie les nouveaux agents (voir « Récupérer »).
-
-Un repo sans remote ou injoignable (pas de réseau, accès refusé) : signale-le
-en une ligne et continue, sans enregistrer de date.
-
-**2. Agents manquants.** Repère les repos git du projet lancé : le dossier de
-lancement s'il est un repo, sinon ses sous-dossiers directs qui en sont. Un
-repo **a un agent** si `~/.claude/agents/<repo>.md` est un lien valide ou si
-`<lancement>/.claude/agents/<repo>.md` existe. Pour chaque repo sans agent,
-cherche dans les repos d'agents, sans rien télécharger :
-
-```bash
-git -C "$hub" ls-tree -r --name-only HEAD | grep -E "^[^/]+/agents/<repo>\.md$"
-```
-
-Préfère le projet du même nom que le dossier de lancement, puis l'ordre de
-`CLAUDE_AGENTS_REPOS`. Si tu trouves, récupère-le (voir ci-dessous) et dis-le
-en une ligne. Sinon, ne fais rien : l'agent sera créé au premier travail
-significatif sur ce repo (« Quand l'écrire »).
-
-Lis aussi `<hub>/<projet>/CLAUDE.md` si le projet lancé existe dans un repo
-d'agents.
+- Ne refais pas ces vérifications toi-même.
+- Si ce message contient une liste « à signaler », résume-la à l'utilisateur
+  en une ou deux lignes avant de traiter sa demande. Sinon, ne dis rien.
+- Un repo du projet sans agent après ce lancement n'en a dans aucun repo
+  d'agents : il sera créé au premier travail significatif (« Quand
+  l'écrire »).
 
 ### Récupérer
 
 Quand l'utilisateur demande des agents (« les agents de X », « l'agent api
-de X », « l'agent api de X dans equipe »), ou quand la vérification de
-début de session en trouve :
+de X », « l'agent api de X dans equipe ») :
 
 1. Cherche le projet : `git -C "$hub" ls-tree -d --name-only HEAD` dans
    chaque repo. Si l'utilisateur nomme un repo, cherche seulement dans
@@ -174,9 +140,8 @@ début de session en trouve :
    `ln -s "$hub/<projet>/agents/<repo>.md" ~/.claude/agents/<repo>.md`
    (crée `~/.claude/agents/` si besoin). Si le lien existe déjà vers un
    autre fichier, ne l'écrase pas : demande, ou utilise un nom préfixé.
-   Les subagents sont chargés au démarrage : préviens l'utilisateur qu'il
-   faut relancer claude-docker pour déléguer à un agent nouvellement lié ;
-   d'ici là, lis le fichier toi-même.
+   Si l'agent nouvellement lié n'est pas encore proposé pour la
+   délégation, lis le fichier toi-même ; il le sera au lancement suivant.
 
 Si on ne demande qu'un agent précis, ne lie que celui-là, mais lis quand même
 le `CLAUDE.md` du projet. Ne télécharge jamais tout un clone

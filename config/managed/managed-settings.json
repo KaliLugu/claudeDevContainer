@@ -11,6 +11,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents-repos/session-context.md\" 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

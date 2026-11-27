@@ -75,5 +75,5 @@ if (Test-Path $envFile) {
     $dockerArgs += @('--env-file', $envFile)
 }
 
-docker @dockerArgs $Image claude @claudeArgs
+docker @dockerArgs $Image bash /etc/claude-code/start.sh @claudeArgs
 exit $LASTEXITCODE
