@@ -109,7 +109,12 @@ Trois limites à connaître :
   d'en utiliser d'autres pour un projet sensible.
 
 Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`,
-`CLAUDE_DOCKER_TOOLS_VOLUME`.
+`CLAUDE_DOCKER_TOOLS_VOLUME`, `CLAUDE_DOCKER_ENV_FILE` (un autre fichier que
+`.env`).
+
+Au lancement, le script signale sur le terminal les réglages de `.env` qu'il
+ne comprend pas (entrée mal formée, guillemets, nom de repo inconnu, token
+vide), puis continue.
 
 ## Outils
 

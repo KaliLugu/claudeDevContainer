@@ -113,24 +113,45 @@ if [[ -t 0 && -t 1 ]]; then
     args+=(-t)
 fi
 
-if [[ -f "$REPO_DIR/.env" ]]; then
-    args+=(--env-file "$REPO_DIR/.env")
+# Réglages (.env du repo) : passés au conteneur, et vérifiés ici pour qu'une
+# faute de frappe ne soit pas ignorée en silence.
+ENV_FILE="${CLAUDE_DOCKER_ENV_FILE:-$REPO_DIR/.env}"
+warn() { echo "claude-docker: $*" >&2; }
+env_value() { grep -E "^$1=" "$ENV_FILE" | tail -n 1 | cut -d= -f2- | tr -d '\r' || true; }
+
+if [[ ! -f "$ENV_FILE" ]]; then
+    warn "pas de fichier $ENV_FILE : Claude demandera une connexion (cp .env.template .env)"
+else
+    args+=(--env-file "$ENV_FILE")
+
+    [[ -n "$(env_value CLAUDE_CODE_OAUTH_TOKEN)" ]] ||
+        warn "CLAUDE_CODE_OAUTH_TOKEN est vide dans $ENV_FILE : Claude demandera une connexion"
+    for key in CLAUDE_CODE_OAUTH_TOKEN CLAUDE_AGENTS_REPOS CLAUDE_AGENTS_PUSH CLAUDE_PUSH_ALLOW; do
+        case "$(env_value "$key")" in
+            *\"*|*\'*|*" "*) warn "$key contient des guillemets ou des espaces : docker les transmet tels quels, retire-les" ;;
+        esac
+    done
 
     # Repos d'agents donnés par un chemin local (relatif à ce repo ou absolu) :
     # monte chaque dossier au même chemin et passe la liste en chemins absolus.
-    agents_repos="$(grep -E '^CLAUDE_AGENTS_REPOS=' "$REPO_DIR/.env" | tail -n 1 | cut -d= -f2- || true)"
+    agents_repos="$(env_value CLAUDE_AGENTS_REPOS)"
+    known=","
     if [[ -n "$agents_repos" ]]; then
-        resolved=()
+        resolved=""
         IFS=, read -ra entries <<< "$agents_repos"
         for entry in "${entries[@]}"; do
             name="${entry%%=*}"
             src="${entry#*=}"
+            if [[ "$entry" != *=* || -z "$src" || ! "$name" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+                warn "CLAUDE_AGENTS_REPOS : entrée ignorée, attendu nom=source : '$entry'"
+                continue
+            fi
             case "$src" in
                 /*|./*|../*|~/*)
                     src="${src/#\~/$HOME}"
                     [[ "$src" == /* ]] || src="$REPO_DIR/$src"
                     if [[ ! -d "$src" ]]; then
-                        echo "claude-docker: repo d'agents '$name' introuvable : $src (ignoré)" >&2
+                        warn "repo d'agents '$name' introuvable : $src (ignoré)"
                         continue
                     fi
                     src="$(cd "$src" && pwd)"
@@ -140,10 +161,22 @@ if [[ -f "$REPO_DIR/.env" ]]; then
                     fi
                     ;;
             esac
-            resolved+=("$name=$src")
+            known="$known$name,"
+            resolved="${resolved:+$resolved,}$name=$src"
         done
-        args+=(-e "CLAUDE_AGENTS_REPOS=$(IFS=,; echo "${resolved[*]}")")
+        args+=(-e "CLAUDE_AGENTS_REPOS=$resolved")
     fi
+
+    IFS=, read -ra entries <<< "$(env_value CLAUDE_AGENTS_PUSH)"
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        [[ "$known" == *",$entry,"* ]] ||
+            warn "CLAUDE_AGENTS_PUSH : '$entry' n'est pas un repo de CLAUDE_AGENTS_REPOS"
+    done
+    IFS=, read -ra entries <<< "$(env_value CLAUDE_PUSH_ALLOW)"
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        [[ "$entry" =~ ^[^:]+:.+$ ]] ||
+            warn "CLAUDE_PUSH_ALLOW : entrée ignorée, attendu repo:branche : '$entry'"
+    done
 fi
 
 exec docker run "${args[@]}" "$RUN_IMAGE" bash /etc/claude-code/start.sh "$@"

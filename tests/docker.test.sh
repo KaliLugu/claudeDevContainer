@@ -76,6 +76,28 @@ ok "--clean sans rien à supprimer" out_has "0 image(s)" launch --clean
 echo 'tree; rm -rf /' > "$TMP/proj/.claude-docker/packages"
 ok "nom de paquet invalide refusé" out_has "nom de paquet invalide" launch --version
 
+# Réglages mal écrits : signalés, sans empêcher le lancement
+cat > "$TMP/env" <<'ENV'
+CLAUDE_CODE_OAUTH_TOKEN=
+CLAUDE_AGENTS_REPOS=sans-source,ok=git@example.com:a/b.git,absent=/nulle/part
+CLAUDE_AGENTS_PUSH=ok,inconnu
+CLAUDE_PUSH_ALLOW="api:claude/*",front
+ENV
+warned() { out_has "$1" env CLAUDE_DOCKER_ENV_FILE="$TMP/env" bash "$ROOT/bin/claude-docker" --version; }
+rm -rf "$TMP/proj/.claude-docker"
+cd "$TMP/proj" || exit 1
+ok "réglages invalides : le lancement continue" warned "Claude Code"
+ok "token vide signalé" warned "CLAUDE_CODE_OAUTH_TOKEN est vide"
+ok "entrée de repo d'agents mal formée signalée" warned "attendu nom=source : 'sans-source'"
+ok "repo d'agents local introuvable signalé" warned "'absent' introuvable"
+ok "nom inconnu dans CLAUDE_AGENTS_PUSH signalé" warned "'inconnu' n'est pas un repo"
+ok "guillemets signalés" warned "CLAUDE_PUSH_ALLOW contient des guillemets"
+ok "entrée CLAUDE_PUSH_ALLOW mal formée signalée" warned "attendu repo:branche : 'front'"
+printf 'CLAUDE_CODE_OAUTH_TOKEN=x\nCLAUDE_PUSH_ALLOW=api:claude/*\n' > "$TMP/env"
+no "réglages valides : aucun avertissement" warned "claude-docker:"
+rm "$TMP/env"
+ok "fichier de réglages absent signalé" warned "pas de fichier"
+
 if [ "$fail" -gt 0 ]; then
     echo "docker : $fail échec(s) sur $n"
     exit 1
