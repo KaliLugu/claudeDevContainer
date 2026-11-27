@@ -145,6 +145,9 @@ CLAUDE_DOCKER_CLAUDE_VERSION=latest claude-docker --rebuild
 Les actions GitHub de la CI sont épinglées par empreinte de commit ;
 Dependabot propose leurs mises à jour.
 
+Les PR de mise à jour (actions, versions de l'image) demandent une review
+aux comptes listés dans `.github/CODEOWNERS`.
+
 L'image de base `debian:bookworm-slim` n'est pas figée, pour continuer à
 recevoir les correctifs de sécurité à chaque `--rebuild`.
 

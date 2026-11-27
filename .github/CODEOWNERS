@@ -1,0 +1,9 @@
+# Demande automatiquement une review sur les PR qui touchent aux dépendances :
+# celles de Dependabot (actions GitHub) et celles du workflow de mise à jour
+# des versions (Claude Code, mise).
+
+# Actions GitHub, workflows et configuration de Dependabot
+/.github/    @KaliLugu
+
+# Versions fixées de l'image
+/dockerfile  @KaliLugu
