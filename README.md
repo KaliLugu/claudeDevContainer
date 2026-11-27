@@ -6,7 +6,7 @@ devient le projet de travail.
 ## Prérequis
 
 - Docker
-- fish (pour la fonction shell ; le script marche aussi depuis bash/zsh)
+- fish ou bash (pour la fonction shell ; le script marche aussi seul)
 - Un token Claude Code : `claude setup-token` sur une machine où Claude est installé
 
 ## Installation
@@ -15,7 +15,7 @@ devient le projet de travail.
 git clone <ce-repo> ~/claude-docker
 cd ~/claude-docker
 cp .env.template .env        # puis renseigner CLAUDE_CODE_OAUTH_TOKEN
-./install-fish.sh
+./install-fish.sh            # ou : ./install-bash.sh
 ```
 
 `install-fish.sh` installe :
@@ -23,7 +23,11 @@ cp .env.template .env        # puis renseigner CLAUDE_CODE_OAUTH_TOKEN
 - `~/.config/fish/functions/claude-docker.fish` (lien vers `fish/claude-docker.fish`)
 - `~/.config/fish/conf.d/claude-docker.fish` : définit `CLAUDE_DOCKER_REPO` et l'abréviation `clauded`
 
-Ouvre un nouveau shell fish.
+`install-bash.sh` ajoute à `~/.bashrc` un bloc qui définit `CLAUDE_DOCKER_REPO`
+et source `bash/claude-docker.bash` (fonction `claude-docker` + alias
+`clauded`). Relançable : le bloc existant est remplacé.
+
+Ouvre un nouveau shell.
 
 ## Utilisation
 
@@ -34,7 +38,7 @@ claude-docker --continue     # les arguments sont passés à claude
 claude-docker --rebuild      # reconstruit l'image avant de lancer
 ```
 
-Sans fish : `~/claude-docker/bin/claude-docker`.
+Sans fonction shell : `~/claude-docker/bin/claude-docker`.
 
 ### Ce que fait le lancement
 
@@ -113,6 +117,8 @@ lancement suivant, sans reconstruire l'image.
 bin/claude-docker         script de lancement
 fish/claude-docker.fish   fonction fish
 install-fish.sh           installation de la fonction fish
+bash/claude-docker.bash   fonction bash
+install-bash.sh           installation de la fonction bash
 config/CLAUDE.md          règles globales montées dans le conteneur
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
