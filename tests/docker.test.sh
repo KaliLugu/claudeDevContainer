@@ -70,6 +70,9 @@ ok "paquets du projet : image dérivée construite" out_has "installation des pa
 no "paquets du projet : pas de réinstallation ensuite" out_has "installation des paquets" launch --version
 pkg_image="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep "^$IMG-pkg:" | head -n 1)"
 ok "paquets du projet : installés, utilisateur dev" in_image "$pkg_image" sh -c 'tree --version && file --version && [ "$(id -un)" = dev ]'
+ok "--clean supprime les images de paquets" out_has "1 image(s) de paquets supprimée(s)" launch --clean
+no "--clean : plus d'image dérivée" docker image inspect "$pkg_image"
+ok "--clean sans rien à supprimer" out_has "0 image(s)" launch --clean
 echo 'tree; rm -rf /' > "$TMP/proj/.claude-docker/packages"
 ok "nom de paquet invalide refusé" out_has "nom de paquet invalide" launch --version
 

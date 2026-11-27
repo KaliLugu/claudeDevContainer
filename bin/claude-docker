@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Lance Claude Code dans le conteneur, avec le dossier courant comme projet.
 # Usage : claude-docker [--rebuild] [--no-sudo] [arguments passés à claude...]
+#         claude-docker --clean
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
@@ -13,10 +14,26 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --rebuild) REBUILD=1 ;;
         --no-sudo) NO_SUDO=1 ;;
+        --clean) CLEAN=1 ;;
         *) break ;;
     esac
     shift
 done
+
+# --clean : supprime les images dérivées des paquets de projet, qui
+# s'accumulent quand les listes changent. Elles sont reconstruites à la demande.
+if [[ -n "${CLEAN:-}" ]]; then
+    removed=0
+    for img in $(docker images --format '{{.Repository}}:{{.Tag}}' "${IMAGE%%:*}-pkg"); do
+        if docker image rm "$img" >/dev/null 2>&1; then
+            removed=$((removed + 1))
+        else
+            echo "claude-docker: $img est utilisée par un conteneur, conservée" >&2
+        fi
+    done
+    echo "claude-docker: $removed image(s) de paquets supprimée(s)"
+    exit 0
+fi
 
 # Construit l'image si absente, si le dockerfile a changé ou si --rebuild,
 # avec l'UID/GID de l'hôte pour que les fichiers créés t'appartiennent.

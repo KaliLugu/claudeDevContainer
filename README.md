@@ -38,6 +38,7 @@ claude-docker --continue     # les arguments sont passés à claude
 claude-docker --rebuild      # reconstruit l'image sans cache : met à jour Claude Code
                              # (l'image est aussi reconstruite seule quand le dockerfile change)
 claude-docker --no-sudo      # session sans sudo ni privilèges (voir Outils)
+claude-docker --clean        # supprime les images de paquets de projet (voir Outils)
 echo "résume ce repo" | claude-docker -p    # l'entrée par pipe est transmise
 ```
 
@@ -128,7 +129,12 @@ qu'utilisent `sudo` et `apt` (pas de `ping` ni de sockets bruts, par exemple).
 (`no-new-privileges`) : `mise` et les paquets du projet restent disponibles.
 À utiliser quand Claude tourne sans surveillance.
 
-Sous Windows natif, `.claude-docker/packages` n'est pas pris en charge.
+Chaque version de la liste donne une image `claude-code-pkg:<empreinte>` ;
+les anciennes restent sur le disque. `claude-docker --clean` les supprime
+toutes : celle du projet est reconstruite à son prochain lancement.
+
+Sous Windows natif, `.claude-docker/packages` et `--clean` ne sont pas pris
+en charge.
 
 
 ## Clé SSH dédiée à Claude
