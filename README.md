@@ -123,8 +123,19 @@ Les versions de Claude Code et de `mise` sont fixées en tête du `dockerfile`
 le binaire `mise` est vérifié par son empreinte SHA-256. Claude Code ne se
 met pas à jour seul dans le conteneur.
 
-Pour mettre à jour, change la version dans le `dockerfile` (et les deux
-empreintes pour `mise`) : l'image est reconstruite au lancement suivant.
+Pour mettre à jour :
+
+```bash
+scripts/update-versions.sh           # écrit les dernières versions et empreintes
+scripts/update-versions.sh --check   # dit seulement s'il y en a de nouvelles
+```
+
+L'image est reconstruite au lancement suivant. Sur GitHub, un workflow
+hebdomadaire (`.github/workflows/update-versions.yml`) lance ce script,
+teste l'image et ouvre une PR. Il faut l'y autoriser une fois : *Settings →
+Actions → General → Allow GitHub Actions to create and approve pull
+requests*.
+
 Pour essayer une autre version de Claude Code sans toucher au fichier :
 
 ```bash
@@ -390,6 +401,7 @@ config/managed/           réglages imposés, hooks et scripts de démarrage
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
 tests/                    tests des scripts (lancés par la CI, .github/workflows/ci.yml)
+scripts/update-versions.sh  met à jour les versions fixées dans le dockerfile
 ```
 
 ## Tests

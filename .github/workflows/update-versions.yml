@@ -1,0 +1,64 @@
+name: Mise à jour des versions
+
+# Cherche chaque semaine une nouvelle version de Claude Code et de mise, teste
+# l'image obtenue et ouvre une PR. Nécessite, dans les réglages du repo :
+# Settings → Actions → General → « Allow GitHub Actions to create and approve
+# pull requests ».
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Versions de Claude Code et de mise
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Cherche les nouvelles versions
+        id: versions
+        run: |
+          scripts/update-versions.sh | tee "$RUNNER_TEMP/versions.txt"
+          if git diff --quiet -- dockerfile; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tests de bout en bout avec les nouvelles versions
+        if: steps.versions.outputs.changed == 'true'
+        run: bash tests/docker.test.sh
+
+      - name: Ouvre ou met à jour la PR
+        if: steps.versions.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: update/versions
+        run: |
+          {
+            echo "Nouvelles versions trouvées par \`scripts/update-versions.sh\` :"
+            echo
+            sed 's/^/- /' "$RUNNER_TEMP/versions.txt"
+            echo
+            echo "Les tests de bout en bout (\`tests/docker.test.sh\`) ont réussi avec ces versions dans le workflow qui a ouvert cette PR."
+            echo "La CI ne se lance pas d'elle-même sur une PR ouverte par une action : ferme puis rouvre la PR pour la déclencher."
+          } > "$RUNNER_TEMP/body.md"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git commit -q -m "Met à jour les versions fixées dans l'image" -- dockerfile
+          git push --force origin "$BRANCH"
+
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base "${{ github.event.repository.default_branch }}" --head "$BRANCH" \
+              --title "Met à jour les versions fixées dans l'image" \
+              --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr edit "$BRANCH" --body-file "$RUNNER_TEMP/body.md"
+          fi

@@ -37,6 +37,8 @@ peuvent surprendre après un `git pull`, sont en tête de chaque entrée.
 - Avertissements au lancement pour les réglages de `.env` mal écrits ;
   `CLAUDE_DOCKER_ENV_FILE` pour utiliser un autre fichier.
 - Tests (`tests/`) et CI GitHub Actions.
+- `scripts/update-versions.sh` et un workflow hebdomadaire qui ouvre une PR
+  quand une nouvelle version de Claude Code ou de `mise` existe.
 - Licence MIT.
 
 ### Corrections
