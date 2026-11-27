@@ -35,7 +35,8 @@ Ouvre un nouveau shell.
 cd ~/projets/mon-projet
 claude-docker                # ou : clauded
 claude-docker --continue     # les arguments sont passés à claude
-claude-docker --rebuild      # reconstruit l'image avant de lancer
+claude-docker --rebuild      # reconstruit l'image sans cache : met à jour Claude Code
+echo "résume ce repo" | claude-docker -p    # l'entrée par pipe est transmise
 ```
 
 Sans fonction shell : `~/claude-docker/bin/claude-docker`.

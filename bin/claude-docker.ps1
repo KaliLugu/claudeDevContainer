@@ -19,7 +19,9 @@ if ($claudeArgs.Count -gt 0 -and $claudeArgs[0] -eq '--rebuild') {
 # gère les droits des montages : UID/GID par défaut (1000) du dockerfile.
 docker image inspect $Image *> $null
 if ($rebuild -or $LASTEXITCODE -ne 0) {
-    docker build -t $Image -f (Join-Path $RepoDir 'dockerfile') $RepoDir
+    $buildArgs = @('build')
+    if ($rebuild) { $buildArgs += @('--no-cache', '--pull') }
+    docker @buildArgs -t $Image -f (Join-Path $RepoDir 'dockerfile') $RepoDir
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -44,9 +46,10 @@ $dockerArgs = @(
     '-w', $ContainerDir
 )
 
-# Mode interactif seulement si on est dans un terminal
+# Pseudo-terminal seulement si on est dans un terminal
+$dockerArgs += '-i'
 if (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-    $dockerArgs += '-it'
+    $dockerArgs += '-t'
 }
 
 $envFile = Join-Path $RepoDir '.env'

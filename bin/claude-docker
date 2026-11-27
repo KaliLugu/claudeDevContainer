@@ -17,6 +17,7 @@ fi
 # pour que les fichiers créés dans le projet t'appartiennent.
 if [[ -n "${REBUILD:-}" ]] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     docker build \
+        ${REBUILD:+--no-cache --pull} \
         --build-arg UID="$(id -u)" \
         --build-arg GID="$(id -g)" \
         -t "$IMAGE" \
@@ -40,9 +41,10 @@ if [[ -f "$REPO_DIR/ssh/id_ed25519" ]]; then
     args+=(-v "$REPO_DIR/ssh:/home/dev/.ssh")
 fi
 
-# Mode interactif seulement si on est dans un terminal
+# Pseudo-terminal seulement si on est dans un terminal
+args+=(-i)
 if [[ -t 0 && -t 1 ]]; then
-    args+=(-it)
+    args+=(-t)
 fi
 
 if [[ -f "$REPO_DIR/.env" ]]; then
