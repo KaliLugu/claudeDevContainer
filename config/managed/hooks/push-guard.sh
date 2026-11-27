@@ -11,7 +11,7 @@ set -u
 push_mark_clear
 
 input="$(cat)"
-case "$input" in *push*|*merge*) ;; *) exit 0 ;; esac
+case "$input" in *push*|*merge*|*send-pack*|*receive-pack*) ;; *) exit 0 ;; esac
 
 if ! command -v jq >/dev/null 2>&1; then
     echo "push-guard: jq absent de l'image, relance avec claude-docker --rebuild" >&2
@@ -54,7 +54,10 @@ while IFS= read -r seg; do
                     ask "Merge de PR : accord de l'utilisateur requis."
                 fi
                 break ;;
-            git|*/git) ;;
+            git-send-pack|*/git-send-pack|git-receive-pack|*/git-receive-pack)
+                push_mark_set
+                ask "Commande interne de push : accord de l'utilisateur requis." ;;
+            git|*/git|*/git.distrib) ;;
             *) continue ;;
         esac
 
@@ -71,6 +74,10 @@ while IFS= read -r seg; do
                 *) break ;;
             esac
         done
+        if [ "${1:-}" = send-pack ]; then
+            push_mark_set
+            ask "Commande interne de push : accord de l'utilisateur requis."
+        fi
         if [ "${1:-}" = push ]; then
             shift
             args=()

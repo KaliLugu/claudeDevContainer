@@ -221,17 +221,21 @@ par URL. Les réglages sont dans `.env` et dans un dossier monté en lecture
 seule : Claude ne peut pas s'accorder lui-même une exception.
 
 Un second filet couvre les push que le hook ne voit pas, ceux lancés par un
-script, un `Makefile` ou un outil : dans le conteneur, `git` passe par une
-enveloppe (`config/managed/bin/git`) qui applique la même règle. Un push
+script, un `Makefile` ou un outil : dans le conteneur, `/usr/bin/git` est
+remplacé par un relais vers une enveloppe (`config/managed/bin/git`) qui
+applique la même règle, y compris pour `sudo git` ou un chemin absolu. Un push
 hors exception y est refusé, sauf pendant la commande pour laquelle tu
 viens de donner ton accord. Conséquence : un `!git push` tapé par toi dans
 Claude est refusé lui aussi ; demande-le à Claude ou pousse depuis ta
 machine.
 
-Ces contrôles portent sur `git` tel qu'il est appelé normalement, pas sur
-le réseau : ils arrêtent les erreurs et les débordements, pas un programme
-qui appellerait `/usr/bin/git` ou parlerait directement à la forge. La
-garantie forte reste une clé sans droit d'écriture.
+Ce qui reste hors de portée : le vrai binaire existe toujours dans l'image
+(`/usr/lib/git-core/git`), et un programme peut parler à la forge sans
+`git`. Claude ne peut pas l'appeler directement sans que le hook te demande
+ton accord, mais un script écrit exprès pour ça passerait. Aucun contrôle
+fait dans le conteneur ne peut l'empêcher, puisque la clé SSH y est lisible.
+La garantie forte est côté forge : une clé sans droit d'écriture (deploy key
+en lecture seule), ou une protection de branche sur les branches à garder.
 
 ## Agents spécialisés par repo
 

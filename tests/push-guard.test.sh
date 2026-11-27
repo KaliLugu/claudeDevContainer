@@ -64,6 +64,11 @@ check ask "$TMP/api" "git push https://example.com/x.git claude/fix"
 check ask "$TMP/api" "git push autre claude/fix"
 check ask "$TMP/api" 'git -C "$REPO" push'
 check ask "$TMP/api" "/usr/bin/git push origin main"
+check ask "$TMP/api" "/usr/lib/git-core/git push origin main"
+check ask "$TMP/api" "/usr/bin/git.distrib push origin main"
+check ask "$TMP/api" "git send-pack origin claude/fix"
+check ask "$TMP/api" "ssh git@github.com git-receive-pack acme/api.git"
+check ask "$TMP/api" "bash -c 'git push origin main'"
 check ask "$TMP/api" "FOO=1 git -c user.name=x push origin main"
 check ask "$TMP/api" 'echo $(git push origin main)'
 check ask "$TMP" "git push"

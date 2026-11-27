@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Tests de l'enveloppe de git (config/managed/bin/git), à lancer DANS le
-# conteneur, où elle est montée en /usr/local/bin/git devant le vrai git :
-# tests/docker.test.sh s'en charge.
+# conteneur, où /usr/bin/git y renvoie : tests/docker.test.sh s'en charge.
 set -u
 
-if [ "$(command -v git)" != /usr/local/bin/git ] || [ ! -f /etc/claude-code/hooks/push-policy.sh ]; then
+if ! grep -qs /etc/claude-code/bin/git /usr/bin/git || [ ! -f /etc/claude-code/bin/git ]; then
     echo "git-wrapper : à lancer dans le conteneur (voir tests/docker.test.sh)"
     exit 1
 fi
@@ -41,7 +40,7 @@ git clone -q "$TMP/api.git" "$TMP/api" 2>/dev/null
 cd "$TMP/api" || exit 1
 git checkout -q -b main
 echo a > a.txt && git add a.txt && git commit -q -m a
-remote_has() { /usr/bin/git -C "$TMP/api.git" rev-parse -q --verify "refs/heads/$1" >/dev/null; }
+remote_has() { /usr/lib/git-core/git -C "$TMP/api.git" rev-parse -q --verify "refs/heads/$1" >/dev/null; }
 hook() { # <commande Bash>
     jq -n --arg c "$1" --arg d "$PWD" '{tool_name: "Bash", cwd: $d, tool_input: {command: $c}}' | bash "$HOOK"
 }
@@ -61,6 +60,10 @@ no "rien sur le remote" remote_has main
 no "push refusé depuis un script" bash -c 'git push origin main'
 no "push refusé avec -C" git -C "$TMP/api" push origin main
 no "push refusé avec -c" git -c user.name=x push origin main
+no "push refusé par /usr/bin/git" /usr/bin/git push origin main
+no "push refusé avec sudo" sudo -E git -C "$TMP/api" -c safe.directory=* push origin main
+no "send-pack refusé" git send-pack "$TMP/api.git" main
+no "toujours rien sur le remote" remote_has main
 
 # Accord demandé par le hook : le push de cette commande passe
 ok "le hook demande l'accord" sh -c "$(declare -f hook); HOOK=$HOOK; hook 'git push origin main' | grep -q '\"ask\"'"

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Enveloppe de git, montée devant le vrai git dans le conteneur : second filet
-# de la règle de push. Le hook push-guard.sh ne voit que les commandes que
+# Enveloppe de git : dans le conteneur, /usr/bin/git y renvoie (voir le
+# dockerfile), donc tout appel à git passe ici. Second filet de la règle de push. Le hook push-guard.sh ne voit que les commandes que
 # Claude lance directement ; un push fait par un script, un Makefile ou un
 # outil passe ici.
 #
 # Un push hors des cas autorisés (push-policy.sh) est refusé, sauf si le hook
 # vient de demander l'accord de l'utilisateur pour la commande en cours.
-REAL=/usr/bin/git
+REAL=/usr/lib/git-core/git
 
-case " $* " in *" push "*) ;; *) exec "$REAL" "$@" ;; esac
+case " $* " in *" push "*|*" send-pack "*) ;; *) exec "$REAL" "$@" ;; esac
 
 PUSH_GIT=$REAL
 # shellcheck source=config/managed/hooks/push-policy.sh
@@ -31,10 +31,12 @@ while [ "$i" -lt "$count" ]; do
         *) break ;;
     esac
 done
-[ "${args[$i]:-}" = push ] || exec "$REAL" "$@"
+sub=${args[$i]:-}
+[ "$sub" = push ] || [ "$sub" = send-pack ] || exec "$REAL" "$@"
 
 rest=("${args[@]:$((i + 1))}")
-if push_allowed "$dir" ${rest[@]+"${rest[@]}"} || push_mark_present; then
+# send-pack, la commande interne derrière push, n'a aucune exception
+if push_mark_present || { [ "$sub" = push ] && push_allowed "$dir" ${rest[@]+"${rest[@]}"}; }; then
     exec "$REAL" "$@"
 fi
 

@@ -89,8 +89,6 @@ args=(
     -v "$REPO_DIR/config/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro"
     # Réglages imposés et hooks (contrôle des push), non modifiables par Claude
     -v "$REPO_DIR/config/managed:/etc/claude-code:ro"
-    # Enveloppe de git, devant /usr/bin/git : second filet pour les push
-    -v "$REPO_DIR/config/managed/bin/git:/usr/local/bin/git:ro"
     # Même chemin que sur l'hôte : l'historique Claude reste distinct par projet
     -v "$PROJECT_DIR:$PROJECT_DIR"
     -w "$PROJECT_DIR"

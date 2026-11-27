@@ -53,7 +53,6 @@ $dockerArgs = @(
     '-v', "$(Join-Path $RepoDir 'config\CLAUDE.md'):/home/dev/.claude/CLAUDE.md:ro",
     # Réglages imposés et hooks (contrôle des push), non modifiables par Claude
     '-v', "$(Join-Path $RepoDir 'config\managed'):/etc/claude-code:ro",
-    '-v', "$(Join-Path $RepoDir 'config\managed\bin\git'):/usr/local/bin/git:ro",
     '-v', "${ProjectDir}:${ContainerDir}",
     '-w', $ContainerDir,
     '--cap-drop', 'ALL',

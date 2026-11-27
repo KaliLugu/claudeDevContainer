@@ -10,7 +10,8 @@ peuvent surprendre après un `git pull`, sont en tête de chaque entrée.
 
 - **Push** : tout `git push` et tout merge de PR demandent maintenant ton
   accord dans le terminal, par un hook, quel que soit le mode de permission.
-  Un push lancé depuis un script ou un outil est refusé.
+  Un push lancé depuis un script ou un outil est refusé, quel que soit le
+  chemin par lequel `git` est appelé (`/usr/bin/git`, `sudo git`).
 - **Exceptions de push** : un `CLAUDE.md` de repo ne peut plus autoriser un
   push. Utilise `CLAUDE_PUSH_ALLOW=repo:branche` dans `.env`
   (ex. `api:claude/*`).

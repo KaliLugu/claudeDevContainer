@@ -52,6 +52,7 @@ CAPS="--cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --c
 # shellcheck disable=SC2086
 ok "sudo fonctionne avec les capacités du mode par défaut" out_has root in_image $CAPS "$IMG" sudo id -un
 no "sudo refusé avec --no-sudo" in_image --cap-drop ALL --security-opt no-new-privileges "$IMG" sudo true
+ok "git fonctionne sans l'enveloppe montée" in_image "$IMG" git --version
 ok "mise et jq présents" in_image "$IMG" sh -c 'mise --version && jq --version'
 pinned() { sed -n "s/^ARG $1=v\{0,1\}//p" "$ROOT/dockerfile"; }
 ok "Claude Code à la version fixée" out_has "$(pinned CLAUDE_VERSION) " in_image "$IMG" claude --version
@@ -67,7 +68,7 @@ ok "hook de push dans le conteneur" in_image $MANAGED -v "$ROOT/tests:/tests:ro"
 # shellcheck disable=SC2086
 ok "synchro des agents dans le conteneur" in_image $MANAGED -v "$ROOT/tests:/tests:ro" -e SYNC=/etc/claude-code/agents-sync.sh "$IMG" bash /tests/agents-sync.test.sh
 # shellcheck disable=SC2086
-ok "enveloppe de git dans le conteneur" in_image $MANAGED -v "$ROOT/config/managed/bin/git:/usr/local/bin/git:ro" -v "$ROOT/tests:/tests:ro" "$IMG" bash /tests/git-wrapper.test.sh
+ok "enveloppe de git dans le conteneur" in_image $MANAGED -v "$ROOT/tests:/tests:ro" "$IMG" bash /tests/git-wrapper.test.sh
 
 mkdir -p "$TMP/proj/.claude-docker"
 printf '# outils du projet\nfile\ntree  # arborescence\n' > "$TMP/proj/.claude-docker/packages"

@@ -17,6 +17,11 @@ git config --global user.email test@example.com
 git config --global init.defaultBranch main
 git config --global protocol.file.allow always
 
+# Dans le conteneur, git refuse les push : la préparation des dépôts de test
+# passe par le vrai git.
+REAL_GIT=git
+[ -x /usr/lib/git-core/git ] && REAL_GIT=/usr/lib/git-core/git
+
 fail=0
 n=0
 ok() { # <description> <commande...>
@@ -85,7 +90,7 @@ ok "le contexte est toujours transmis" contains "$CTX" "Carte de la plateforme"
 
 # --- Mise à jour côté forge, vérification récente : pas de fetch
 commit_file "$TMP/forge-src" plateforme/agents/api.md "agent api v2"
-git -C "$TMP/forge-src" push -q origin main
+"$REAL_GIT" -C "$TMP/forge-src" push -q origin main
 ok "lancement dans le délai" run
 ok "pas de mise à jour avant le délai" contains "$A/api.md" "agent api (équipe)"
 
@@ -98,7 +103,7 @@ ok "mise à jour résumée" contains "$CTX" '`equipe` mis à jour'
 # --- Copie locale avec modifications en cours : jamais touchée
 git clone -q "$TMP/perso.git" "$TMP/perso-autre"
 commit_file "$TMP/perso-autre" plateforme/agents/infra.md "agent infra v2"
-git -C "$TMP/perso-autre" push -q origin main
+"$REAL_GIT" -C "$TMP/perso-autre" push -q origin main
 echo "brouillon" > "$TMP/perso/brouillon.md"
 ok "lancement avec copie locale modifiée" run
 ok "copie locale non avancée" contains "$TMP/perso/plateforme/agents/infra.md" "agent infra (perso)"

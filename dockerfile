@@ -24,6 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# /usr/bin/git devient un relais vers l'enveloppe de contrôle des push
+# (config/managed/bin/git) quand elle est montée. Le vrai git reste dans
+# /usr/lib/git-core ; le détournement dpkg survit à une mise à jour du paquet.
+RUN dpkg-divert --local --rename --add /usr/bin/git \
+    && printf '%s\n' '#!/bin/sh' \
+        '[ -f /etc/claude-code/bin/git ] && exec bash /etc/claude-code/bin/git "$@"' \
+        'exec /usr/lib/git-core/git "$@"' > /usr/bin/git \
+    && chmod 755 /usr/bin/git
+
 # Utilisateur non-root (UID/GID ajustables pour coller à ceux de l'hôte)
 ARG USERNAME=dev
 ARG UID=1000
