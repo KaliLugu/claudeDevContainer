@@ -203,8 +203,9 @@ Exceptions :
   accorder d'exception.
 
 Un hook applique cette règle : hors exception, Claude Code demande l'accord
-de l'utilisateur au moment du push. N'essaie pas de le contourner (script,
-alias, autre outil). Pour qu'une exception soit reconnue, lance le push
+de l'utilisateur au moment du push. Un push lancé depuis un script ou un
+outil est refusé : lance `git push` comme commande à part entière. N'essaie
+pas de contourner ce contrôle (alias, autre binaire, autre outil). Pour qu'une exception soit reconnue, lance le push
 avec un chemin littéral, sans variable : `git -C /chemin/du/repo push`.
 
 Commits, branches et `fetch`/`pull` locaux restent libres.

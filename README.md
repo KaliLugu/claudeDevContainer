@@ -202,9 +202,18 @@ suppression de branche, un push de tags, un refspec `a:b` ou un remote donné
 par URL. Les réglages sont dans `.env` et dans un dossier monté en lecture
 seule : Claude ne peut pas s'accorder lui-même une exception.
 
-Ce contrôle porte sur les commandes que Claude lance, pas sur le réseau : il
-arrête les erreurs et les débordements, pas un programme qui pousserait par
-un autre chemin. La garantie forte reste une clé sans droit d'écriture.
+Un second filet couvre les push que le hook ne voit pas, ceux lancés par un
+script, un `Makefile` ou un outil : dans le conteneur, `git` passe par une
+enveloppe (`config/managed/bin/git`) qui applique la même règle. Un push
+hors exception y est refusé, sauf pendant la commande pour laquelle tu
+viens de donner ton accord. Conséquence : un `!git push` tapé par toi dans
+Claude est refusé lui aussi ; demande-le à Claude ou pousse depuis ta
+machine.
+
+Ces contrôles portent sur `git` tel qu'il est appelé normalement, pas sur
+le réseau : ils arrêtent les erreurs et les débordements, pas un programme
+qui appellerait `/usr/bin/git` ou parlerait directement à la forge. La
+garantie forte reste une clé sans droit d'écriture.
 
 ## Agents spécialisés par repo
 
@@ -365,6 +374,7 @@ tests/                    tests des scripts (lancés par la CI, .github/workflow
 
 ```bash
 tests/push-guard.test.sh     # hook de contrôle des push (git, jq)
+tests/git-wrapper.test.sh    # enveloppe de git, lancé dans le conteneur par docker.test.sh
 tests/agents-sync.test.sh    # synchronisation des repos d'agents (git)
 tests/docker.test.sh         # build de l'image et lancement (Docker)
 ```

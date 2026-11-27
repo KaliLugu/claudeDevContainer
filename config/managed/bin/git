@@ -1,0 +1,47 @@
+#!/bin/bash
+# Enveloppe de git, montée devant le vrai git dans le conteneur : second filet
+# de la règle de push. Le hook push-guard.sh ne voit que les commandes que
+# Claude lance directement ; un push fait par un script, un Makefile ou un
+# outil passe ici.
+#
+# Un push hors des cas autorisés (push-policy.sh) est refusé, sauf si le hook
+# vient de demander l'accord de l'utilisateur pour la commande en cours.
+REAL=/usr/bin/git
+
+case " $* " in *" push "*) ;; *) exec "$REAL" "$@" ;; esac
+
+PUSH_GIT=$REAL
+# shellcheck source=config/managed/hooks/push-policy.sh
+. /etc/claude-code/hooks/push-policy.sh 2>/dev/null || {
+    echo "claude-docker: règle de push introuvable, push refusé" >&2
+    exit 1
+}
+
+# Options globales de git, jusqu'à la sous-commande
+args=("$@")
+count=${#args[@]}
+dir=$PWD
+i=0
+while [ "$i" -lt "$count" ]; do
+    case "${args[$i]}" in
+        -C) dir="$(resolve "${args[$((i + 1))]:-}" "$dir")"; i=$((i + 2)) ;;
+        -c|--git-dir|--work-tree|--namespace) i=$((i + 2)) ;;
+        --git-dir=*|--work-tree=*) dir=""; i=$((i + 1)) ;;
+        -*) i=$((i + 1)) ;;
+        *) break ;;
+    esac
+done
+[ "${args[$i]:-}" = push ] || exec "$REAL" "$@"
+
+rest=("${args[@]:$((i + 1))}")
+if push_allowed "$dir" ${rest[@]+"${rest[@]}"} || push_mark_present; then
+    exec "$REAL" "$@"
+fi
+
+cat >&2 <<'MSG'
+claude-docker: push refusé.
+Ce push n'est pas dans les cas autorisés (CLAUDE_AGENTS_PUSH, CLAUDE_PUSH_ALLOW)
+et il n'a pas été lancé directement par Claude : l'utilisateur n'a pas pu
+donner son accord. Lance « git push » comme commande à part entière.
+MSG
+exit 1

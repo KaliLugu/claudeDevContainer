@@ -63,6 +63,8 @@ ok "managed-settings.json valide" in_image $MANAGED "$IMG" jq -e '.hooks.PreTool
 ok "hook de push dans le conteneur" in_image $MANAGED -v "$ROOT/tests:/tests:ro" -e HOOK=/etc/claude-code/hooks/push-guard.sh "$IMG" bash /tests/push-guard.test.sh
 # shellcheck disable=SC2086
 ok "synchro des agents dans le conteneur" in_image $MANAGED -v "$ROOT/tests:/tests:ro" -e SYNC=/etc/claude-code/agents-sync.sh "$IMG" bash /tests/agents-sync.test.sh
+# shellcheck disable=SC2086
+ok "enveloppe de git dans le conteneur" in_image $MANAGED -v "$ROOT/config/managed/bin/git:/usr/local/bin/git:ro" -v "$ROOT/tests:/tests:ro" "$IMG" bash /tests/git-wrapper.test.sh
 
 mkdir -p "$TMP/proj/.claude-docker"
 printf '# outils du projet\nfile\ntree  # arborescence\n' > "$TMP/proj/.claude-docker/packages"

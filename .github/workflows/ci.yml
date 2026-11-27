@@ -19,6 +19,7 @@ jobs:
           shellcheck -e SC2016 \
             bin/claude-docker install-bash.sh install-fish.sh setup-ssh-key.sh \
             bash/claude-docker.bash config/managed/*.sh config/managed/hooks/*.sh \
+            config/managed/bin/git \
             tests/*.sh
       - name: managed-settings.json valide
         run: jq -e '.hooks.PreToolUse and .hooks.SessionStart' config/managed/managed-settings.json
