@@ -36,6 +36,7 @@ cd ~/projets/mon-projet
 claude-docker                # ou : clauded
 claude-docker --continue     # les arguments sont passés à claude
 claude-docker --rebuild      # reconstruit l'image sans cache : met à jour Claude Code
+claude-docker --no-sudo      # session sans sudo ni privilèges (voir Outils)
 echo "résume ce repo" | claude-docker -p    # l'entrée par pipe est transmise
 ```
 
@@ -77,15 +78,39 @@ fonctionnent) : pour tout avoir, utilise WSL2 avec le script bash.
 | Image | `claude-code`, construite au premier lancement avec ton UID/GID (les fichiers créés t'appartiennent) |
 | Projet | le dossier courant, monté **au même chemin** que sur l'hôte (historique Claude séparé par projet) |
 | Config Claude | volume Docker `claude-config` → `/home/dev/.claude` (session, réglages, historique persistants) |
+| Outils | volume Docker `claude-tools` → `~/.local/share/mise` (langages installés par `mise`, persistants) |
+| Paquets du projet | `.claude-docker/packages` du dossier courant, installés dans une image dérivée |
 | Règles globales | `config/CLAUDE.md` monté en lecture seule comme `~/.claude/CLAUDE.md` |
-| Clé SSH | `ssh/` monté comme `~/.ssh` s'il contient une clé (`setup-ssh-key.sh`) |
+| Clé SSH | `ssh/` monté en lecture seule comme `~/.ssh` s'il contient une clé (`setup-ssh-key.sh`) |
 | Repos d'agents | ceux de `CLAUDE_AGENTS_REPOS` donnés par un chemin local, montés au même chemin |
 | Secrets | `.env` du repo passé via `--env-file` |
 
 Seul le dossier courant est visible dans le conteneur : Claude ne peut pas
 lire ni modifier le reste de la machine.
 
-Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`.
+Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`,
+`CLAUDE_DOCKER_TOOLS_VOLUME`.
+
+## Outils
+
+L'image de base est volontairement petite. Claude ajoute ce dont il a besoin
+de trois façons :
+
+| Besoin | Moyen | Durée de vie |
+|---|---|---|
+| Langage ou outil (Node, Python, Go, Java, Ruby…) | `mise use node@22`, sans root. Les `.nvmrc`, `.tool-versions` et `mise.toml` du projet sont lus : `mise install` | volume `claude-tools`, partagé entre les projets |
+| Paquet système dont le projet a toujours besoin | une ligne dans `.claude-docker/packages` du projet (un paquet `apt` par ligne, `#` pour commenter) | image dérivée, reconstruite quand la liste change ; pris en compte au lancement suivant |
+| Essai ponctuel | `sudo apt-get install …` | jusqu'à la sortie du conteneur |
+
+`sudo` est sans mot de passe. Les capacités Linux sont réduites à celles
+qu'utilisent `sudo` et `apt` (pas de `ping` ni de sockets bruts, par exemple).
+
+`claude-docker --no-sudo` lance une session sans `sudo` ni aucune capacité
+(`no-new-privileges`) : `mise` et les paquets du projet restent disponibles.
+À utiliser quand Claude tourne sans surveillance.
+
+Sous Windows natif, `.claude-docker/packages` n'est pas pris en charge.
+
 
 ## Clé SSH dédiée à Claude
 
@@ -117,6 +142,11 @@ moins de droits possible, et révoque-la côté forge si la machine est
 compromise. Pour la changer, supprime `ssh/` et relance le script.
 
 Test depuis le conteneur : `ssh -T git@github.com`.
+
+`ssh/` est monté en lecture seule : les empreintes des hôtes sont retenues
+dans le volume de config (`~/.claude/ssh_known_hosts`). Si ton `ssh/config`
+date d'avant ce changement, supprime-le et relance le script (la clé est
+conservée).
 
 Pour signer les commits de Claude à ton nom ou à un nom dédié, renseigne les
 variables `GIT_AUTHOR_*` / `GIT_COMMITTER_*` dans `.env`.

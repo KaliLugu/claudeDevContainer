@@ -209,6 +209,21 @@ rien télécharger).
   (seulement s'il est inscriptible).
 - Ne copie jamais les agents dans les repos de code du projet.
 
+## Outils du conteneur
+
+L'image est minimale. Quand un outil manque :
+
+- **Langage ou outil** (Node, Python, Go, Java, Ruby…) : `mise`, sans root.
+  `mise install` si le projet a un `.nvmrc`, `.tool-versions` ou `mise.toml`,
+  sinon `mise use <outil>@<version>` (ou `-g` hors projet). C'est conservé
+  d'une session à l'autre.
+- **Paquet système** : `sudo apt-get update && sudo apt-get install -y <paquet>`.
+  Il disparaît à la fin de la session : si le projet en aura encore besoin,
+  ajoute-le aussi à `<lancement>/.claude-docker/packages` (un paquet par
+  ligne) et signale-le en une ligne.
+- Si `CLAUDE_DOCKER_NO_SUDO` est définie, `sudo` est indisponible : ajoute le
+  paquet à `.claude-docker/packages` et demande à l'utilisateur de relancer.
+
 ## Git : push
 
 Ne fais jamais de `git push` (ni rien qui publie sur un remote : push de tag,

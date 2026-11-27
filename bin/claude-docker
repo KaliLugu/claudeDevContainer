@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 # Lance Claude Code dans le conteneur, avec le dossier courant comme projet.
-# Usage : claude-docker [--rebuild] [arguments passés à claude...]
+# Usage : claude-docker [--rebuild] [--no-sudo] [arguments passés à claude...]
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 IMAGE="${CLAUDE_DOCKER_IMAGE:-claude-code}"
 CONFIG_VOLUME="${CLAUDE_DOCKER_CONFIG_VOLUME:-claude-config}"
+TOOLS_VOLUME="${CLAUDE_DOCKER_TOOLS_VOLUME:-claude-tools}"
 PROJECT_DIR="$(pwd)"
 
-if [[ "${1:-}" == "--rebuild" ]]; then
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --rebuild) REBUILD=1 ;;
+        --no-sudo) NO_SUDO=1 ;;
+        *) break ;;
+    esac
     shift
-    REBUILD=1
-fi
+done
 
 # Construit l'image si absente (ou si --rebuild), avec l'UID/GID de l'hôte
 # pour que les fichiers créés dans le projet t'appartiennent.
@@ -25,20 +30,59 @@ if [[ -n "${REBUILD:-}" ]] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; t
         "$REPO_DIR"
 fi
 
+# Paquets apt du projet (.claude-docker/packages, un par ligne) : installés
+# dans une image dérivée, en cache tant que la liste ne change pas.
+RUN_IMAGE="$IMAGE"
+PKG_FILE="$PROJECT_DIR/.claude-docker/packages"
+if [[ -f "$PKG_FILE" ]]; then
+    pkgs="$(sed 's/#.*//' "$PKG_FILE" | tr -s ' \t\r\n' ' ' | sed 's/^ //; s/ $//')"
+    for p in $pkgs; do
+        if [[ ! "$p" =~ ^[a-z0-9][a-z0-9+.:=~-]*$ ]]; then
+            echo "claude-docker: nom de paquet invalide dans $PKG_FILE : $p" >&2
+            exit 1
+        fi
+    done
+    if [[ -n "$pkgs" ]]; then
+        base_id="$(docker image inspect -f '{{.Id}}' "$IMAGE")"
+        RUN_IMAGE="${IMAGE%%:*}-pkg:$(printf '%s %s' "$base_id" "$pkgs" | cksum | cut -d' ' -f1)"
+        if ! docker image inspect "$RUN_IMAGE" >/dev/null 2>&1; then
+            echo "claude-docker: installation des paquets du projet : $pkgs" >&2
+            docker build -t "$RUN_IMAGE" - <<DOCKERFILE
+FROM $IMAGE
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends $pkgs && rm -rf /var/lib/apt/lists/*
+USER dev
+DOCKERFILE
+        fi
+    fi
+fi
+
 args=(
     --rm
     --name "claude-$(basename "$PROJECT_DIR" | tr -c 'a-zA-Z0-9_.-' '-')-$$"
     -v "$CONFIG_VOLUME:/home/dev/.claude"
+    -v "$TOOLS_VOLUME:/home/dev/.local/share/mise"
     # Règles globales versionnées dans ce repo (lecture seule)
     -v "$REPO_DIR/config/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro"
     # Même chemin que sur l'hôte : l'historique Claude reste distinct par projet
     -v "$PROJECT_DIR:$PROJECT_DIR"
     -w "$PROJECT_DIR"
+    --cap-drop ALL
+    --pids-limit 4096
 )
+
+if [[ -n "${NO_SUDO:-}" ]]; then
+    args+=(--security-opt no-new-privileges -e CLAUDE_DOCKER_NO_SUDO=1)
+else
+    # Seulement ce qu'il faut à sudo et apt
+    for cap in CHOWN DAC_OVERRIDE FOWNER FSETID SETUID SETGID KILL AUDIT_WRITE NET_BIND_SERVICE; do
+        args+=(--cap-add "$cap")
+    done
+fi
 
 # Clé SSH dédiée à Claude (créée par setup-ssh-key.sh), si présente
 if [[ -f "$REPO_DIR/ssh/id_ed25519" ]]; then
-    args+=(-v "$REPO_DIR/ssh:/home/dev/.ssh")
+    args+=(-v "$REPO_DIR/ssh:/home/dev/.ssh:ro")
 fi
 
 # Pseudo-terminal seulement si on est dans un terminal
@@ -80,4 +124,4 @@ if [[ -f "$REPO_DIR/.env" ]]; then
     fi
 fi
 
-exec docker run "${args[@]}" "$IMAGE" claude "$@"
+exec docker run "${args[@]}" "$RUN_IMAGE" claude "$@"

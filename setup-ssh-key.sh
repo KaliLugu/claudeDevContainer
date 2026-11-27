@@ -26,8 +26,10 @@ Host *
     IdentityFile ~/.ssh/id_ed25519
     IdentitiesOnly yes
     # Accepte l'empreinte d'un hôte inconnu à la première connexion,
-    # refuse ensuite tout changement (stockée dans ~/.ssh/known_hosts)
+    # refuse ensuite tout changement. ~/.ssh est en lecture seule : les
+    # empreintes vont dans le volume de config.
     StrictHostKeyChecking accept-new
+    UserKnownHostsFile ~/.claude/ssh_known_hosts ~/.ssh/known_hosts
 CONF
 fi
 touch "$SSH_DIR/known_hosts"
