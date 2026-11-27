@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Analyse statique
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          shellcheck -e SC2016 \
+            bin/claude-docker install-bash.sh install-fish.sh setup-ssh-key.sh \
+            bash/claude-docker.bash config/managed/*.sh config/managed/hooks/*.sh \
+            tests/*.sh
+      - name: managed-settings.json valide
+        run: jq -e '.hooks.PreToolUse and .hooks.SessionStart' config/managed/managed-settings.json
+      - name: Syntaxe PowerShell
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD 'bin/claude-docker.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; exit 1 }
+
+  scripts:
+    name: Scripts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS : bash 3.2 et outils BSD, sans Docker
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntaxe du lanceur
+        run: /bin/bash -n bin/claude-docker
+      - name: Hook de push
+        run: /bin/bash tests/push-guard.test.sh
+      - name: Synchro des agents
+        run: /bin/bash tests/agents-sync.test.sh
+
+  docker:
+    name: Image et lancement
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests de bout en bout
+        run: bash tests/docker.test.sh

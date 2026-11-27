@@ -347,4 +347,17 @@ config/managed/           réglages imposés, hooks et scripts de démarrage
                           (start.sh, agents-sync.sh), montés dans /etc/claude-code
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
+tests/                    tests des scripts (lancés par la CI, .github/workflows/ci.yml)
 ```
+
+## Tests
+
+```bash
+tests/push-guard.test.sh     # hook de contrôle des push (git, jq)
+tests/agents-sync.test.sh    # synchronisation des repos d'agents (git)
+tests/docker.test.sh         # build de l'image et lancement (Docker)
+```
+
+La CI GitHub Actions les lance à chaque push, avec `shellcheck` et une
+vérification de syntaxe du script PowerShell. Le script PowerShell n'est pas
+exécuté par la CI.
