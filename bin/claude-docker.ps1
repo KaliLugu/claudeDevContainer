@@ -21,7 +21,11 @@ while ($claudeArgs.Count -gt 0 -and $claudeArgs[0] -in '--rebuild', '--no-sudo')
 # Sous Windows, Docker Desktop gère les droits des montages : UID/GID par
 # défaut (1000) du dockerfile.
 $dockerfileSum = (Get-FileHash (Join-Path $RepoDir 'dockerfile') -Algorithm SHA256).Hash
-$builtSum = docker image inspect -f '{{index .Config.Labels \"claude-docker.dockerfile\"}}' $Image 2>$null
+$builtSum = & {
+    $ErrorActionPreference = 'SilentlyContinue'
+    $labels = docker image inspect -f '{{json .Config.Labels}}' $Image 2>$null
+    if ($LASTEXITCODE -eq 0 -and $labels) { ($labels | ConvertFrom-Json).'claude-docker.dockerfile' }
+}
 if ($rebuild -or $builtSum -ne $dockerfileSum) {
     $buildArgs = @('build', '--label', "claude-docker.dockerfile=$dockerfileSum")
     if ($rebuild) { $buildArgs += @('--no-cache', '--pull') }

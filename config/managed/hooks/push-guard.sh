@@ -30,6 +30,7 @@ real() { (cd "$1" 2>/dev/null && pwd -P); }
 # $1 relatif à $2 ; vide si le chemin contient une variable non développée
 resolve() {
     local p=$1
+    # shellcheck disable=SC2088
     case "$p" in
         *'$'*|*'`'*) return ;;
         '~') p=$HOME ;;
@@ -109,7 +110,7 @@ push_allowed() {
 }
 
 # Découpe la commande en commandes simples
-segments="$(printf '%s\n' "$cmd" | sed -e 's/&&/;/g' -e 's/||/;/g' -e 's/\$(/;/g' | tr ';|()`&' '\n\n\n\n\n\n')"
+segments="$(printf '%s\n' "$cmd" | sed -e 's/&&/;/g' -e 's/||/;/g' -e 's/\$(/;/g' | tr ';|()`&' '\n')"
 
 dir="$(real "$cwd")"
 while IFS= read -r seg; do
