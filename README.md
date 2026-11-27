@@ -55,6 +55,42 @@ lire ni modifier le reste de la machine.
 
 Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`.
 
+## Clé SSH dédiée à Claude
+
+Pour que Claude puisse cloner, `fetch` ou `pull` des repos privés sans
+utiliser ta propre clé :
+
+```bash
+~/claude-docker/setup-ssh-key.sh
+```
+
+Le script crée `ssh/id_ed25519` dans ce repo (ignoré par git), un
+`ssh/config` et un `known_hosts`, puis affiche la clé publique. Ce dossier est
+monté comme `~/.ssh` dans le conteneur à chaque lancement. Le script est
+relançable : il n'écrase pas une clé existante et réaffiche la clé publique.
+
+Ajoute ensuite la clé publique sur ta forge :
+
+- **Deploy key par repo** (recommandé) : *Settings → Deploy keys*. Laisse
+  « Allow write access » décoché si Claude n'a pas à pousser sur ce repo.
+- **Clé de compte** : *Settings → SSH and GPG keys*. Plus simple, mais donne
+  accès à tous tes repos.
+
+La clé n'a pas de passphrase (Claude ne peut pas la saisir) : donne-lui le
+moins de droits possible, et révoque-la côté forge si la machine est
+compromise. Pour la changer, supprime `ssh/` et relance le script.
+
+Test depuis le conteneur : `ssh -T git@github.com`.
+
+Pour signer les commits de Claude à ton nom ou à un nom dédié, renseigne les
+variables `GIT_AUTHOR_*` / `GIT_COMMITTER_*` dans `.env`.
+
+**Push** : `config/CLAUDE.md` interdit à Claude de pousser sans ton accord
+explicite. Pour l'autoriser sur un repo précis, écris-le dans le `CLAUDE.md`
+de ce repo (ou dans son fichier d'agent), par exemple :
+
+> Push autorisé sans demander sur les branches `claude/*`.
+
 ## Agents spécialisés par repo
 
 `config/CLAUDE.md` contient des règles qui font écrire à Claude, au fil du
@@ -119,6 +155,7 @@ fish/claude-docker.fish   fonction fish
 install-fish.sh           installation de la fonction fish
 bash/claude-docker.bash   fonction bash
 install-bash.sh           installation de la fonction bash
+setup-ssh-key.sh          création de la clé SSH dédiée à Claude
 config/CLAUDE.md          règles globales montées dans le conteneur
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env

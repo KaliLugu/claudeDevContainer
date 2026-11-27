@@ -54,3 +54,17 @@ Tu es spécialiste du repo `<chemin relatif>`. Travaille dans ce dossier.
 Pour une tâche qui touche un repo précis, délègue à son agent quand c'est
 utile ; pour une tâche transverse, appuie-toi sur le `CLAUDE.md` racine et
 coordonne les agents des repos concernés.
+
+## Git : push
+
+Ne fais jamais de `git push` (ni rien qui publie sur un remote : push de tag,
+`--force`, suppression de branche distante, merge de PR) sans l'accord
+explicite de l'utilisateur pour ce push-là. Un accord vaut pour la demande en
+cours, pas pour les suivantes.
+
+Seule exception : un repo dont le `CLAUDE.md` ou le fichier d'agent
+(`.claude/agents/<repo>.md`) l'indique explicitement (ex. « push autorisé sur
+les branches `claude/*` »). Respecte alors exactement le périmètre indiqué et
+demande pour tout ce qui en sort.
+
+Commits, branches et `fetch`/`pull` locaux restent libres.

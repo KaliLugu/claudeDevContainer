@@ -35,6 +35,11 @@ args=(
     -w "$PROJECT_DIR"
 )
 
+# Clé SSH dédiée à Claude (créée par setup-ssh-key.sh), si présente
+if [[ -f "$REPO_DIR/ssh/id_ed25519" ]]; then
+    args+=(-v "$REPO_DIR/ssh:/home/dev/.ssh")
+fi
+
 # Mode interactif seulement si on est dans un terminal
 if [[ -t 0 && -t 1 ]]; then
     args+=(-it)
