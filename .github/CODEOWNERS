@@ -3,7 +3,7 @@
 # des versions (Claude Code, mise).
 
 # Actions GitHub, workflows et configuration de Dependabot
-/.github/    @KaliLugu
+/.github/    @KaliLugu @xxlplay37
 
 # Versions fixées de l'image
-/dockerfile  @KaliLugu
+/dockerfile  @KaliLugu @xxlplay37
