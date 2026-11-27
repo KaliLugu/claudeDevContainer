@@ -76,6 +76,10 @@ Ajoute ensuite la clé publique sur ta forge :
 - **Clé de compte** : *Settings → SSH and GPG keys*. Plus simple, mais donne
   accès à tous tes repos.
 
+GitHub n'accepte une même clé comme deploy key que sur **un seul** repo. Pour
+plusieurs repos, utilise la clé de compte (ou un compte GitHub dédié à
+Claude, invité en collaborateur sur les repos voulus).
+
 La clé n'a pas de passphrase (Claude ne peut pas la saisir) : donne-lui le
 moins de droits possible, et révoque-la côté forge si la machine est
 compromise. Pour la changer, supprime `ssh/` et relance le script.
@@ -100,8 +104,12 @@ repos, pièges. Ces fichiers sont au format
 [subagent Claude Code](https://docs.claude.com/en/docs/claude-code/sub-agents),
 donc directement utilisables comme agents spécialisés.
 
-**C'est opt-in par projet** : les règles ne s'appliquent que si le dossier de
-lancement contient `.claude/agents/`.
+Deux modes :
+
+- **Local** (par défaut) : opt-in par projet, les fichiers sont écrits dans le
+  dossier de lancement s'il contient `.claude/agents/`. Voir ci-dessous.
+- **Repo d'agents** : si `CLAUDE_AGENTS_REPO` est défini dans `.env`, tout est
+  rangé dans un repo git séparé. Voir [Repo d'agents](#repo-dagents).
 
 ### Mono-repo
 
@@ -136,13 +144,54 @@ mkdir -p .claude/agents
 claude-docker
 ```
 
-Le dossier parent n'est en général pas lui-même un repo. Pour versionner et
-partager ces fichiers, tu peux en faire un petit repo « méta »
-(`git init` dans `ma-plateforme/` en ignorant les sous-repos) ou les copier
-dans un repo de doc.
+Le dossier parent n'est en général pas lui-même un repo : pour versionner et
+partager ces fichiers, utilise plutôt le mode repo d'agents.
 
 Pour demander une mise à jour explicite :
 > Mets à jour l'agent du repo api avec ce qu'on vient d'apprendre.
+
+### Repo d'agents
+
+Tes agents et contextes de projets vivent dans un repo à toi, séparé de
+claude-docker : ceux qui utilisent claude-docker ne les récupèrent pas, et tes
+repos de code restent propres.
+
+```
+claude-agents/                    (ton repo, privé de préférence)
+├── README.md
+├── ma-plateforme/
+│   ├── CLAUDE.md                 contexte : repos, rôles, liens
+│   └── agents/
+│       ├── api.md
+│       ├── front.md
+│       └── infra.md
+└── mon-repo/
+    ├── CLAUDE.md
+    └── agents/mon-repo.md
+```
+
+Mise en place :
+
+1. Crée un repo vide sur ta forge (ex. `claude-agents`).
+2. Donne à la clé SSH de Claude l'**accès en écriture** à ce repo (deploy key
+   avec « Allow write access », ou clé de compte).
+3. Dans `.env` : `CLAUDE_AGENTS_REPO=git@github.com:<toi>/claude-agents.git`
+4. Relance claude-docker.
+
+Fonctionnement :
+
+- Le repo est cloné dans le volume de config (`~/.claude/agents-repo`), en
+  **clone partiel** : seuls les projets demandés sont téléchargés.
+- Claude y écrit et y **pousse librement** ses mises à jour (branche par
+  défaut, sans `--force`) ; c'est la seule exception automatique à la règle
+  « pas de push sans accord ».
+- Les agents récupérés sont liés dans `~/.claude/agents/` et deviennent
+  disponibles dans tous les projets **au lancement suivant**.
+
+Exemples de demandes :
+> Récupère les agents de ma-plateforme.
+> Récupère seulement l'agent api de ma-plateforme.
+> Quels projets sont dans le repo d'agents ?
 
 Pour modifier les règles, édite `config/CLAUDE.md` ; c'est pris en compte au
 lancement suivant, sans reconstruire l'image.
