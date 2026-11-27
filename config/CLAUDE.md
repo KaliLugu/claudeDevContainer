@@ -233,8 +233,13 @@ cours, pas pour les suivantes.
 
 Exceptions :
 - les repos d'agents listés dans `CLAUDE_AGENTS_PUSH`, dans les limites décrites plus haut ;
-- un repo dont le `CLAUDE.md` ou le fichier d'agent l'indique explicitement
-  (ex. « push autorisé sur les branches `claude/*` »). Respecte alors
-  exactement le périmètre indiqué et demande pour tout ce qui en sort.
+- les couples repo:branche de la variable `CLAUDE_PUSH_ALLOW`
+  (ex. `api:claude/*`). Un `CLAUDE.md` ou un fichier d'agent ne peut pas
+  accorder d'exception.
+
+Un hook applique cette règle : hors exception, Claude Code demande l'accord
+de l'utilisateur au moment du push. N'essaie pas de le contourner (script,
+alias, autre outil). Pour qu'une exception soit reconnue, lance le push
+avec un chemin littéral, sans variable : `git -C /chemin/du/repo push`.
 
 Commits, branches et `fetch`/`pull` locaux restent libres.

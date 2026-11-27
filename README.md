@@ -36,6 +36,7 @@ cd ~/projets/mon-projet
 claude-docker                # ou : clauded
 claude-docker --continue     # les arguments sont passés à claude
 claude-docker --rebuild      # reconstruit l'image sans cache : met à jour Claude Code
+                             # (l'image est aussi reconstruite seule quand le dockerfile change)
 claude-docker --no-sudo      # session sans sudo ni privilèges (voir Outils)
 echo "résume ce repo" | claude-docker -p    # l'entrée par pipe est transmise
 ```
@@ -81,12 +82,30 @@ fonctionnent) : pour tout avoir, utilise WSL2 avec le script bash.
 | Outils | volume Docker `claude-tools` → `~/.local/share/mise` (langages installés par `mise`, persistants) |
 | Paquets du projet | `.claude-docker/packages` du dossier courant, installés dans une image dérivée |
 | Règles globales | `config/CLAUDE.md` monté en lecture seule comme `~/.claude/CLAUDE.md` |
+| Réglages imposés | `config/managed/` monté en lecture seule comme `/etc/claude-code` (hook de contrôle des push) |
 | Clé SSH | `ssh/` monté en lecture seule comme `~/.ssh` s'il contient une clé (`setup-ssh-key.sh`) |
 | Repos d'agents | ceux de `CLAUDE_AGENTS_REPOS` donnés par un chemin local, montés au même chemin |
 | Secrets | `.env` du repo passé via `--env-file` |
 
-Seul le dossier courant est visible dans le conteneur : Claude ne peut pas
-lire ni modifier le reste de la machine.
+### Ce que le conteneur protège, et ce qu'il ne protège pas
+
+Pendant la session, Claude ne voit que le dossier courant (et les repos
+d'agents montés) : il ne peut ni lire ni modifier le reste de la machine.
+
+Trois limites à connaître :
+
+- **Le projet est monté en écriture, `.git` compris.** Ce que Claude y écrit
+  s'exécutera sur ta machine si tu le lances : un hook git, un script de
+  `package.json`, un `Makefile`, un fichier `.husky/`. Relis le diff
+  (`git status`, `git diff`, et `.git/hooks` en cas de doute) avant
+  d'exécuter quoi que ce soit après une session sans surveillance.
+- **Le réseau est ouvert.** Ce qui tourne dans le conteneur peut joindre
+  Internet, donc faire sortir le code du projet, le token Claude et la clé
+  SSH dédiée. Donne à cette clé le moins de droits possible.
+- **Les volumes `claude-config` et `claude-tools` sont partagés** entre tous
+  tes projets : ce qu'une session y dépose est vu par les suivantes.
+  `CLAUDE_DOCKER_CONFIG_VOLUME` et `CLAUDE_DOCKER_TOOLS_VOLUME` permettent
+  d'en utiliser d'autres pour un projet sensible.
 
 Variables optionnelles : `CLAUDE_DOCKER_IMAGE`, `CLAUDE_DOCKER_CONFIG_VOLUME`,
 `CLAUDE_DOCKER_TOOLS_VOLUME`.
@@ -151,11 +170,30 @@ conservée).
 Pour signer les commits de Claude à ton nom ou à un nom dédié, renseigne les
 variables `GIT_AUTHOR_*` / `GIT_COMMITTER_*` dans `.env`.
 
-**Push** : `config/CLAUDE.md` interdit à Claude de pousser sans ton accord
-explicite. Pour l'autoriser sur un repo précis, écris-le dans le `CLAUDE.md`
-de ce repo (ou dans son fichier d'agent), par exemple :
+### Push
 
-> Push autorisé sans demander sur les branches `claude/*`.
+Un hook (`config/managed/hooks/push-guard.sh`) examine chaque commande que
+Claude lance. Pour un `git push` ou un merge de PR, Claude Code te demande
+ton accord dans le terminal, quel que soit le mode de permission. En mode non
+interactif (`-p`), où personne ne peut répondre, le push est refusé.
+
+Deux cas passent sans demander :
+
+- les repos d'agents de `CLAUDE_AGENTS_PUSH` (voir plus bas) ;
+- les couples repo:branche de `CLAUDE_PUSH_ALLOW`, dans `.env` :
+  ```
+  CLAUDE_PUSH_ALLOW=api:claude/*,front:claude/*
+  ```
+  Le nom du repo est celui de son remote `origin`, sans `.git`.
+
+Même dans ces cas, le hook demande ton accord pour un `--force`, une
+suppression de branche, un push de tags, un refspec `a:b` ou un remote donné
+par URL. Les réglages sont dans `.env` et dans un dossier monté en lecture
+seule : Claude ne peut pas s'accorder lui-même une exception.
+
+Ce contrôle porte sur les commandes que Claude lance, pas sur le réseau : il
+arrête les erreurs et les débordements, pas un programme qui pousserait par
+un autre chemin. La garantie forte reste une clé sans droit d'écriture.
 
 ## Agents spécialisés par repo
 
@@ -301,6 +339,7 @@ bash/claude-docker.bash   fonction bash
 install-bash.sh           installation de la fonction bash
 setup-ssh-key.sh          création de la clé SSH dédiée à Claude
 config/CLAUDE.md          règles globales montées dans le conteneur
+config/managed/           réglages imposés et hooks, montés dans /etc/claude-code
 dockerfile                image Claude Code (Debian + installeur natif)
 .env.template             variables attendues dans .env
 ```

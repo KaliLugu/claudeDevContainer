@@ -17,11 +17,13 @@ while ($claudeArgs.Count -gt 0 -and $claudeArgs[0] -in '--rebuild', '--no-sudo')
     $claudeArgs = @($claudeArgs | Select-Object -Skip 1)
 }
 
-# Construit l'image si absente (ou si --rebuild). Sous Windows, Docker Desktop
-# gère les droits des montages : UID/GID par défaut (1000) du dockerfile.
-docker image inspect $Image *> $null
-if ($rebuild -or $LASTEXITCODE -ne 0) {
-    $buildArgs = @('build')
+# Construit l'image si absente, si le dockerfile a changé ou si --rebuild.
+# Sous Windows, Docker Desktop gère les droits des montages : UID/GID par
+# défaut (1000) du dockerfile.
+$dockerfileSum = (Get-FileHash (Join-Path $RepoDir 'dockerfile') -Algorithm SHA256).Hash
+$builtSum = docker image inspect -f '{{index .Config.Labels \"claude-docker.dockerfile\"}}' $Image 2>$null
+if ($rebuild -or $builtSum -ne $dockerfileSum) {
+    $buildArgs = @('build', '--label', "claude-docker.dockerfile=$dockerfileSum")
     if ($rebuild) { $buildArgs += @('--no-cache', '--pull') }
     docker @buildArgs -t $Image -f (Join-Path $RepoDir 'dockerfile') $RepoDir
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -45,6 +47,8 @@ $dockerArgs = @(
     '-v', "${ToolsVolume}:/home/dev/.local/share/mise",
     # Règles globales versionnées dans ce repo (lecture seule)
     '-v', "$(Join-Path $RepoDir 'config\CLAUDE.md'):/home/dev/.claude/CLAUDE.md:ro",
+    # Réglages imposés et hooks (contrôle des push), non modifiables par Claude
+    '-v', "$(Join-Path $RepoDir 'config\managed'):/etc/claude-code:ro",
     '-v', "${ProjectDir}:${ContainerDir}",
     '-w', $ContainerDir,
     '--cap-drop', 'ALL',

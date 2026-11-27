@@ -18,11 +18,14 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# Construit l'image si absente (ou si --rebuild), avec l'UID/GID de l'hôte
-# pour que les fichiers créés dans le projet t'appartiennent.
-if [[ -n "${REBUILD:-}" ]] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+# Construit l'image si absente, si le dockerfile a changé ou si --rebuild,
+# avec l'UID/GID de l'hôte pour que les fichiers créés t'appartiennent.
+DOCKERFILE_SUM="$(cksum < "$REPO_DIR/dockerfile" | cut -d' ' -f1)"
+built_sum="$(docker image inspect -f '{{index .Config.Labels "claude-docker.dockerfile"}}' "$IMAGE" 2>/dev/null || true)"
+if [[ -n "${REBUILD:-}" || "$built_sum" != "$DOCKERFILE_SUM" ]]; then
     docker build \
         ${REBUILD:+--no-cache --pull} \
+        --label "claude-docker.dockerfile=$DOCKERFILE_SUM" \
         --build-arg UID="$(id -u)" \
         --build-arg GID="$(id -g)" \
         -t "$IMAGE" \
@@ -64,6 +67,8 @@ args=(
     -v "$TOOLS_VOLUME:/home/dev/.local/share/mise"
     # Règles globales versionnées dans ce repo (lecture seule)
     -v "$REPO_DIR/config/CLAUDE.md:/home/dev/.claude/CLAUDE.md:ro"
+    # Réglages imposés et hooks (contrôle des push), non modifiables par Claude
+    -v "$REPO_DIR/config/managed:/etc/claude-code:ro"
     # Même chemin que sur l'hôte : l'historique Claude reste distinct par projet
     -v "$PROJECT_DIR:$PROJECT_DIR"
     -w "$PROJECT_DIR"
