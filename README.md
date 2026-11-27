@@ -175,24 +175,43 @@ claude-agents/                    (privé de préférence)
 
 Mise en place :
 
-1. Crée un repo vide sur ta forge (ex. `claude-agents`).
+1. Crée un repo sur ta forge (ex. `claude-agents`), vide ou non.
 2. Donne à la clé SSH de Claude l'accès à chaque repo : **en écriture** pour
    ceux où Claude doit publier, en lecture pour les autres.
 3. Dans `.env`, sans espaces ni guillemets :
    ```
-   CLAUDE_AGENTS_REPOS=perso=git@github.com:<toi>/claude-agents.git,equipe=git@github.com:<equipe>/agents.git
+   CLAUDE_AGENTS_REPOS=perso=../claude-agents,equipe=git@github.com:<equipe>/agents.git
    CLAUDE_AGENTS_PUSH=perso
    ```
-   `CLAUDE_AGENTS_REPOS` : liste `nom=url`, l'ordre donne la priorité quand
-   un projet existe dans plusieurs repos. `CLAUDE_AGENTS_PUSH` : les repos où
-   Claude écrit et pousse librement ; les autres sont en lecture seule.
+   - `CLAUDE_AGENTS_REPOS` : liste `nom=source`, l'ordre donne la priorité
+     quand un projet existe dans plusieurs repos. La source est :
+     - une **URL git** : Claude le clone dans le conteneur
+       (`~/.claude/agents-repos/<nom>`), en ne téléchargeant que les
+       projets utilisés ;
+     - un **chemin local** (relatif à ce repo, ou absolu) : ta propre copie
+       de travail, montée dans le conteneur au même chemin. Tu vois et
+       modifies les agents directement, Claude commite et pousse depuis
+       elle (seulement ses fichiers, jamais tes modifications en cours).
+   - `CLAUDE_AGENTS_PUSH` : les repos où Claude écrit et pousse librement ;
+     les autres sont en lecture seule.
+   - `CLAUDE_AGENTS_CHECK_HOURS` (optionnel, défaut 24) : délai entre deux
+     vérifications de mises à jour.
 4. Relance claude-docker.
+
+Au début de chaque session, Claude :
+
+- **vérifie les mises à jour** de chaque repo d'agents si la dernière
+  vérification date de plus de `CLAUDE_AGENTS_CHECK_HOURS` heures (date
+  retenue dans `~/.claude/agents-repos/state.tsv`), les récupère et te
+  résume ce qui concerne le projet lancé ;
+- **cherche les agents manquants** : pour chaque repo git du projet lancé
+  qui n'a pas encore d'agent, il regarde si un repo d'agents en contient un
+  et le récupère.
+
+Il ne dit rien s'il n'y a rien de nouveau.
 
 Fonctionnement :
 
-- Chaque repo est cloné dans le volume de config
-  (`~/.claude/agents-repos/<nom>`), en **clone partiel** : seuls les projets
-  demandés sont téléchargés.
 - Claude **pousse librement** sur les repos de `CLAUDE_AGENTS_PUSH` (branche
   par défaut, sans `--force`) ; c'est la seule exception automatique à la
   règle « pas de push sans accord ». Les nouveaux projets vont dans le

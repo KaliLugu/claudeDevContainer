@@ -47,6 +47,35 @@ fi
 
 if [[ -f "$REPO_DIR/.env" ]]; then
     args+=(--env-file "$REPO_DIR/.env")
+
+    # Repos d'agents donnés par un chemin local (relatif à ce repo ou absolu) :
+    # monte chaque dossier au même chemin et passe la liste en chemins absolus.
+    agents_repos="$(grep -E '^CLAUDE_AGENTS_REPOS=' "$REPO_DIR/.env" | tail -n 1 | cut -d= -f2- || true)"
+    if [[ -n "$agents_repos" ]]; then
+        resolved=()
+        IFS=, read -ra entries <<< "$agents_repos"
+        for entry in "${entries[@]}"; do
+            name="${entry%%=*}"
+            src="${entry#*=}"
+            case "$src" in
+                /*|./*|../*|~/*)
+                    src="${src/#\~/$HOME}"
+                    [[ "$src" == /* ]] || src="$REPO_DIR/$src"
+                    if [[ ! -d "$src" ]]; then
+                        echo "claude-docker: repo d'agents '$name' introuvable : $src (ignoré)" >&2
+                        continue
+                    fi
+                    src="$(cd "$src" && pwd)"
+                    # Déjà visible si c'est le projet lui-même ou un de ses sous-dossiers
+                    if [[ "$src" != "$PROJECT_DIR" && "$src" != "$PROJECT_DIR"/* ]]; then
+                        args+=(-v "$src:$src")
+                    fi
+                    ;;
+            esac
+            resolved+=("$name=$src")
+        done
+        args+=(-e "CLAUDE_AGENTS_REPOS=$(IFS=,; echo "${resolved[*]}")")
+    fi
 fi
 
 exec docker run "${args[@]}" "$IMAGE" claude "$@"
